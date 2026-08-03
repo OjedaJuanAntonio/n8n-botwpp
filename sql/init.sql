@@ -6,102 +6,115 @@
 -- (imagen postgres:16-alpine) SOLO la primera vez que se crea el volumen
 -- "postgres_data", porque está montado en /docker-entrypoint-initdb.d/.
 -- Si ya existe el volumen, este archivo NO se vuelve a correr. Para forzar
--- que se re-ejecute (por ejemplo si lo modificás), hay que borrar el volumen
--- (ver instrucciones en README.md).
+-- que se re-ejecute hay que borrar el volumen: docker compose down -v
+-- (⚠ eso borra TODOS los datos de negocio).
 --
--- Incluye datos de ejemplo (seed) para poder probar el flujo del bot sin
--- tener todavía el catálogo real de Farmalife/Ysdin.
+-- El catálogo real (tabla productos) lo carga ConsultasOracle\sync_stock.py
+-- desde el Oracle de la empresa. Los seeds de acá son mínimos, solo para que
+-- el bot pueda probarse antes de la primera sincronización.
 -- ============================================================================
 
+CREATE EXTENSION IF NOT EXISTS pg_trgm;  -- búsqueda por texto parcial (ILIKE '%...%')
+
 -- ----------------------------------------------------------------------------
--- Tabla: proveedores
--- Representa cada marca/proveedor (ej: "Farmalife", "Ysdin") a la que se le
--- pueden pedir productos. Un comprador queda asignado a una sola marca.
+-- Tabla: compradores
+-- Personas que gestionan las compras del lado de la droguería. El bot les
+-- deriva los pedidos según la marca del producto solicitado.
+-- Una fila por PERSONA (no por marca): un comprador atiende muchas marcas.
 -- ----------------------------------------------------------------------------
-CREATE TABLE proveedores (
+CREATE TABLE compradores (
     id              SERIAL PRIMARY KEY,
-    nombre_marca    VARCHAR(100) NOT NULL UNIQUE, -- Nombre de la marca/proveedor, ej: 'Farmalife', 'Ysdin'
-    activo          BOOLEAN NOT NULL DEFAULT TRUE, -- Si está en FALSE, el bot no debe permitir pedidos a esta marca
+    nombre          VARCHAR(150) NOT NULL,        -- Nombre del responsable de compras
+    numero_whatsapp VARCHAR(20) NOT NULL UNIQUE,  -- Internacional sin '+', ej: 54XXXXXXXXXX
+    activo          BOOLEAN NOT NULL DEFAULT TRUE,
     creado_en       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- ----------------------------------------------------------------------------
+-- Tabla: proveedores
+-- Cada marca/laboratorio del catálogo, con el comprador que la atiende.
+-- El nombre debe coincidir EXACTAMENTE con productos.marca_proveedor, que
+-- viene de Oracle en MAYÚSCULAS (ej: 'ABBOTT', 'PUIG ARGENTINA').
+-- comprador_id puede ser NULL: marcas sin comprador asignado (obsoletas).
+-- ----------------------------------------------------------------------------
+CREATE TABLE proveedores (
+    id            SERIAL PRIMARY KEY,
+    nombre_marca  VARCHAR(150) NOT NULL UNIQUE,
+    comprador_id  INTEGER REFERENCES compradores(id),
+    activo        BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ----------------------------------------------------------------------------
 -- Tabla: farmacias_autorizadas
--- Whitelist de números de WhatsApp que tienen permiso para hacer pedidos
--- a través del bot. Cualquier mensaje entrante de un número que no esté acá
--- (o que esté con activo = FALSE) debería ser rechazado/ignorado por el flow.
+-- Whitelist de números de WhatsApp habilitados para usar el bot. Un mensaje
+-- de un número que no esté acá (o con activo = FALSE) debe ser ignorado.
 -- ----------------------------------------------------------------------------
 CREATE TABLE farmacias_autorizadas (
-    id                  SERIAL PRIMARY KEY,
-    numero_whatsapp     VARCHAR(20) NOT NULL UNIQUE, -- Número en formato internacional sin '+', ej: '5491122334455'
-    nombre_farmacia     VARCHAR(150) NOT NULL,        -- Razón social o nombre de fantasía de la farmacia
-    direccion           VARCHAR(200),                 -- Dirección de la farmacia (opcional, útil para logística)
-    activo              BOOLEAN NOT NULL DEFAULT TRUE, -- Permite dar de baja sin borrar el historial
-    creado_en           TIMESTAMPTZ NOT NULL DEFAULT now()
+    id              SERIAL PRIMARY KEY,
+    numero_whatsapp VARCHAR(20) NOT NULL UNIQUE,  -- Internacional sin '+', ej: 54XXXXXXXXXX
+    nombre_farmacia VARCHAR(150) NOT NULL,
+    direccion       VARCHAR(200),
+    activo          BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- ----------------------------------------------------------------------------
 -- Tabla: productos
--- Catálogo de productos con stock y precio para que el bot pueda responder
--- disponibilidad y armar el pedido.
+-- Catálogo con stock y precio. La REEMPLAZA COMPLETA (TRUNCATE + INSERT en una
+-- sola transacción) el script sync_stock.py en cada corrida, con lo que trae
+-- consultas_sql\stock_sync.sql. Los alias de ese SELECT deben coincidir con
+-- estos nombres de columna.
 --
--- IMPORTANTE: esta tabla la reemplaza COMPLETA (TRUNCATE + INSERT) el script
--- ConsultasOracle\sync_stock.py en cada corrida, con la foto que trae de
--- Oracle (consultas_sql\stock_sync.sql). Los alias del SELECT de Oracle
--- tienen que coincidir con estos nombres de columna. Los seeds de abajo solo
--- sirven para probar el bot antes de la primera sincronización.
--- marca_proveedor es texto (el nombre del laboratorio tal como viene de
--- Oracle); para derivar pedidos se matchea contra proveedores.nombre_marca.
+-- Notas sobre los datos reales de Oracle:
+--   - precio = PRECIO_FARMACIA (costo + margen de droguería, que es lo que
+--     paga la farmacia). ~76% del catálogo tiene precio; el resto viene NULL.
+--   - monodroga (principio activo) solo aplica a medicamentos (~22%).
+--   - stock puede ser 0: el producto se trabaja pero no hay disponibilidad.
 -- ----------------------------------------------------------------------------
 CREATE TABLE productos (
-    id                  SERIAL PRIMARY KEY,
-    codigo_barra        VARCHAR(20),                  -- Código de barras (EAN), viene de Oracle CODIGO_BARRA
-    codigo_farmacia     VARCHAR(20),                  -- Código interno propio, viene de Oracle COD_FARMACIA
-    nombre              VARCHAR(200) NOT NULL,        -- Nombre comercial del producto
-    marca_proveedor     VARCHAR(150),                 -- Marca/laboratorio en texto (Oracle l.DESCRIPCION)
-    stock               INTEGER DEFAULT 0,            -- Unidades disponibles (puede venir NULL de Oracle)
-    precio              NUMERIC(14, 2),               -- Precio en ARS (NULL en ~75% del catálogo; hay medicamentos de alto costo que superan los $100M)
-    unidad_medida       VARCHAR(20) NOT NULL DEFAULT 'unidad', -- ej: 'unidad', 'caja x10', 'blister'
-    activo              BOOLEAN NOT NULL DEFAULT TRUE, -- Permite discontinuar un producto sin borrarlo
-    creado_en           TIMESTAMPTZ NOT NULL DEFAULT now()
+    id              SERIAL PRIMARY KEY,
+    codigo_barra    VARCHAR(20),                  -- EAN (Oracle CODIGO_BARRA)
+    codigo_farmacia VARCHAR(20),                  -- Código interno (Oracle COD_FARMACIA)
+    troquel         VARCHAR(50),                  -- Código troquel (Oracle TROQUEL)
+    nombre          VARCHAR(200) NOT NULL,        -- Nombre comercial (Oracle DESCRIPCION)
+    monodroga       VARCHAR(120),                 -- Principio activo (Oracle MONODROGA)
+    marca_proveedor VARCHAR(150),                 -- Laboratorio (Oracle l.DESCRIPCION)
+    stock           INTEGER DEFAULT 0,
+    precio          NUMERIC(14, 2),               -- Oracle PRECIO_FARMACIA
+    unidad_medida   VARCHAR(20) NOT NULL DEFAULT 'unidad',
+    activo          BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Índices para las búsquedas del bot (sin ellos, cada consulta recorre 85k filas)
+CREATE INDEX idx_productos_codigo_barra    ON productos (codigo_barra);
+CREATE INDEX idx_productos_codigo_farmacia ON productos (codigo_farmacia);
+CREATE INDEX idx_productos_troquel         ON productos (troquel);
+CREATE INDEX idx_productos_marca           ON productos (marca_proveedor);
+CREATE INDEX idx_productos_nombre_trgm     ON productos USING gin (nombre gin_trgm_ops);
+CREATE INDEX idx_productos_monodroga_trgm  ON productos USING gin (monodroga gin_trgm_ops);
+CREATE INDEX idx_productos_con_stock       ON productos (stock) WHERE stock > 0;
+
 -- ----------------------------------------------------------------------------
--- Tabla: compradores
--- Personas que gestionan los pedidos del lado del proveedor (a quién el bot
--- le tiene que avisar/derivar cuando entra un pedido de una marca puntual).
+-- Vista: productos_disponibles
+-- Lo que el bot puede ofrecer realmente. Se mantiene la tabla completa a
+-- propósito, para poder distinguir "no trabajamos ese producto" de "lo
+-- trabajamos pero está sin stock": son respuestas distintas para la farmacia.
 -- ----------------------------------------------------------------------------
-CREATE TABLE compradores (
-    id                          SERIAL PRIMARY KEY,
-    nombre                      VARCHAR(150) NOT NULL, -- Nombre del comprador/responsable de compras
-    marca_proveedor_asignada_id INTEGER NOT NULL REFERENCES proveedores(id), -- Marca de la que se ocupa
-    numero_whatsapp             VARCHAR(20) NOT NULL UNIQUE, -- Número donde el bot le reenvía/notifica pedidos
-    activo                      BOOLEAN NOT NULL DEFAULT TRUE,
-    creado_en                   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+CREATE VIEW productos_disponibles AS
+SELECT p.id, p.codigo_barra, p.codigo_farmacia, p.troquel, p.nombre, p.monodroga,
+       p.marca_proveedor, p.stock, p.precio, p.unidad_medida
+FROM productos p
+WHERE p.stock > 0;
 
 -- ============================================================================
--- Datos de ejemplo (seed) para poder probar el flujo end-to-end sin el
--- catálogo real. Reemplazar/borrar cuando se cargue la data verdadera.
+-- Seeds mínimos (piloto). Las marcas reales las carga sql/02_datos_negocio.sql
+-- a partir del catálogo ya sincronizado.
 -- ============================================================================
 
-INSERT INTO proveedores (nombre_marca, activo) VALUES
-    ('Farmalife', TRUE),
-    ('Ysdin', TRUE);
+INSERT INTO compradores (nombre, numero_whatsapp, activo) VALUES
+    ('Comprador de prueba', '54XXXXXXXXXX', TRUE);
 
 INSERT INTO farmacias_autorizadas (numero_whatsapp, nombre_farmacia, direccion, activo) VALUES
-    ('5491122334455', 'Farmacia Central',        'Av. Siempre Viva 123, CABA', TRUE),
-    ('5491133445566', 'Farmacia del Barrio',      'Calle Falsa 456, CABA',      TRUE),
-    ('5491144556677', 'Farmacia San Martín',      'San Martín 789, La Plata',   FALSE);
-
-INSERT INTO productos (codigo_barra, codigo_farmacia, nombre, marca_proveedor, stock, precio, unidad_medida, activo) VALUES
-    ('7790000000011', 'FL-001', 'Ibuprofeno 400mg x20',        'Farmalife', 150, 2500.00, 'caja x20', TRUE),
-    ('7790000000028', 'FL-002', 'Paracetamol 500mg x30',       'Farmalife', 80,  1800.00, 'caja x30', TRUE),
-    ('7790000000035', 'FL-003', 'Alcohol en Gel 250ml',        'Farmalife', 200, 900.00,  'unidad',   TRUE),
-    ('7790000000042', 'YS-001', 'Protector Solar FPS50 200ml', 'Ysdin',     60,  6500.00, 'unidad',   TRUE),
-    ('7790000000059', 'YS-002', 'Crema Hidratante 100ml',      'Ysdin',     40,  4200.00, 'unidad',   TRUE),
-    ('7790000000066', 'YS-003', 'Jabón Líquido Dermo 500ml',   'Ysdin',     0,   3100.00, 'unidad',   FALSE);
-
-INSERT INTO compradores (nombre, marca_proveedor_asignada_id, numero_whatsapp, activo) VALUES
-    ('Juan Pérez (Compras Farmalife)', 1, '5491155667788', TRUE),
-    ('María Gómez (Compras Ysdin)',    2, '5491166778899', TRUE);
+    ('54XXXXXXXXXX', 'Farmacia de Prueba', 'Corrientes', TRUE);

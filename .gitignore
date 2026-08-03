@@ -11,8 +11,9 @@ ConsultasOracle/salidas/
 ConsultasOracle/logs/
 
 # --- Datos maestros: nombres de empleados y telefonos (repo publico) -------
-datos/*.csv
-datos/*.xlsx
+# Se ignora TODO el contenido de datos/ salvo su documentacion.
+datos/*
+!datos/LEEME.md
 
 # --- Documentos comerciales ------------------------------------------------
 Presupuesto_Bot_WhatsApp_Farmacias.pdf

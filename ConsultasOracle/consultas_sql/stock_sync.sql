@@ -1,10 +1,12 @@
 SELECT
     p.CODIGO_BARRA                         AS codigo_barra,
     p.COD_FARMACIA                         AS codigo_farmacia,
+    p.TROQUEL                              AS troquel,
     p.DESCRIPCION                          AS nombre,
+    p.MONODROGA                            AS monodroga,
     l.DESCRIPCION                          AS marca_proveedor,
     DW_SCO.BUSCO_STOCK_PROD(p.ITEM_ID,'T') AS stock,
-    p.PRECIO_PUBLICO                       AS precio
+    p.PRECIO_FARMACIA                      AS precio
 FROM
     DW_SCO.SCO_PRODUCTOS_REP p,
     DW_SCO.SCO_LABORATORIOS l
