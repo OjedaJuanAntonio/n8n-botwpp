@@ -1,3 +1,9 @@
+# Nombre del proyecto Compose. Se fija explicitamente porque la carpeta se
+# renombro (antes "scarp para farmalife ysdin"): sin esto, Compose derivaria el
+# nombre de la carpeta actual, crearia volumenes nuevos VACIOS y se perderian
+# de vista los datos ya cargados (catalogo de productos y workflows de n8n).
+name: scarpparafarmalifeysdin
+
 services:
   postgres:
     image: postgres:16-alpine

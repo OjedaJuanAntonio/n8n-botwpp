@@ -10,6 +10,10 @@ ConsultasOracle/config.py
 ConsultasOracle/salidas/
 ConsultasOracle/logs/
 
+# --- Datos maestros: nombres de empleados y telefonos (repo publico) -------
+datos/*.csv
+datos/*.xlsx
+
 # --- Documentos comerciales ------------------------------------------------
 Presupuesto_Bot_WhatsApp_Farmacias.pdf
 Presupuesto_Bot_WhatsApp_Farmacias.docx
