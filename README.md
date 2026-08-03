@@ -225,7 +225,43 @@ de n8n con:
 
 ---
 
-## 6. Opcional: skills de n8n para Claude Code
+## 6. El sync del catálogo (carpeta `ConsultasOracle/`) — pieza obligatoria
+
+El stock y los precios reales viven en el **Oracle del sistema comercial** (base
+de reportes `DW`, esquema `DW_SCO`). n8n **no puede consultarla directamente**:
+es un Oracle 10g y ningún driver moderno lo soporta (el detalle de por qué está
+en `ConsultasOracle/CONTEXTO_DEL_PROYECTO.md`).
+
+Por eso existe esta carpeta: **consulta Oracle y clona el catálogo a Postgres**,
+que sí es una base compatible con el nodo nativo de n8n. Sin este paso el bot no
+tiene datos que responder.
+
+```
+Oracle 10g (DW)  --[ solo lectura, ADODB/MSDAORA, Python 32 bits ]-->  sync_stock.py
+                                                                            |
+                                              TRUNCATE + INSERT en 1 transacción
+                                                                            v
+                                        Postgres (tabla productos)  <--  nodo Postgres de n8n
+```
+
+Puntos clave:
+
+- La consulta que define qué se trae está en `ConsultasOracle/consultas_sql/stock_sync.sql`.
+  Los **alias de sus columnas deben coincidir exactamente** con los nombres de
+  columna de la tabla `productos` en Postgres.
+- El Oracle se usa **solo en modo lectura**. Nunca se escribe ahí: es un data
+  warehouse que se regenera desde el sistema comercial.
+- Todo el reemplazo ocurre en **una sola transacción**, así que el bot nunca ve
+  la tabla vacía ni a medias. Si Oracle falla, Postgres no se toca y quedan los
+  datos de la corrida anterior.
+- Se ejecuta con `sync_stock.bat` y está pensado para programarse cada hora con
+  el Programador de Tareas de Windows.
+- Requiere el **Python de 32 bits** (`C:\Python312-32`) con `pywin32`, `openpyxl`
+  y `pg8000` instalados.
+
+---
+
+## 7. Opcional: skills de n8n para Claude Code
 
 Si querés ayuda contextual de Claude mientras armás el workflow a mano en
 la interfaz de n8n, existe el plugin de terceros

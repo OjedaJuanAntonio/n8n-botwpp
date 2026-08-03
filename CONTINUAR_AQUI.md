@@ -59,7 +59,7 @@ WhatsApp Cloud API (Meta)
 │   ├── logs\sync_stock.log  historial de todas las corridas del sync
 │   └── CONTEXTO_DEL_PROYECTO.md   por qué MSDAORA/32 bits (¡leerlo si se toca la conexión Oracle!)
 ├── _archivos_viejos\        duplicados pre-consolidación (BORRABLES sin miedo)
-├── scrap_farmalife.py + historico_precios_ysdin.csv   scraping previo, independiente del bot
+│   (el scraper de la web pública se movió a ..\scraper-farmalife-web\, no es parte del bot)
 └── (cascarón vacío en C:\Users\BACKUP-FCIA\ConsultasOracle — borrarlo a mano, quedó lockeado)
 ```
 
