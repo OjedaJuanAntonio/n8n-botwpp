@@ -70,51 +70,58 @@ WhatsApp Cloud API (Meta)
 
 ---
 
-## 3. Estado de cada pieza (2026-07-06)
+## 3. Estado de cada pieza (2026-08-03)
 
 | Pieza | Estado |
 |---|---|
-| Docker n8n + Postgres | ✅ Corriendo (farmar_n8n, farmar_postgres healthy) |
-| Esquema Postgres | ✅ Final: codigo_barra/codigo_farmacia, marca_proveedor texto, precio NUMERIC(14,2) |
-| sql\init.sql | ✅ Actualizado, refleja el esquema final |
-| stock_sync.sql | ✅ Consulta real validada ('Active' existe; valores: Active / No Planif / Inactive) |
+| Docker n8n + Postgres | ✅ Corriendo (`farmar_n8n`, `farmar_postgres` healthy) |
+| Esquema Postgres | ✅ Final: codigo_barra / codigo_farmacia / troquel / monodroga, marca_proveedor texto, precio NUMERIC(14,2) |
+| sql\init.sql | ✅ Refleja el esquema final |
+| stock_sync.sql | ✅ Trae PRECIO_FARMACIA + MONODROGA + TROQUEL |
 | config.py | ✅ Completo (Oracle + Postgres, sin placeholders) |
 | pg8000 | ✅ Instalado en C:\Python312-32 (psycopg2-binary NO compila en 32 bits) |
-| sync_stock.py | ✅ Adaptado a pg8000 + fix cursor |
-| **Primera sincronización** | ✅ **FUNCIONA** (2026-07-07 08:08): 85.089 filas en 550 s |
-| Programación horaria (schtasks) | ⏳ **ES EL PRÓXIMO PASO** (§4) |
-| Workflow n8n | ⏳ Lo arma el usuario a mano en la UI (http://localhost:5678) |
+| Sincronización | ✅ **FUNCIONA**: 85.680 filas en ~9 min |
+| Datos del piloto | ✅ 1 farmacia + 1 comprador de prueba, 846 marcas cargadas |
+| Índices y consultas del bot | ✅ Probados (whitelist, código, nombre, equivalentes, comprador) |
+| Repo GitHub | ✅ https://github.com/OjedaJuanAntonio/n8n-botwpp |
+| **Workflow n8n** | ⏳ **ES EL PRÓXIMO PASO** (§4): está en `n8n\farmar-whatsapp-bot-v2.json`, falta importarlo |
+| Programación horaria (schtasks) | ⏳ Pendiente (§5.3) |
 | ngrok / WEBHOOK_URL | ⏳ Pendiente (README §3) |
 | App Meta / WhatsApp Cloud API | ⏳ Pendiente, pasos manuales (README §4) |
 
-**Historial de la puesta a punto del sync (3 intentos; en los fallos el rollback
-protegió la tabla):** (1) cursor de pg8000 no soporta `with` → corregido en
-sync_stock.py; (2) overflow de `precio NUMERIC(10,2)` por 3 medicamentos de alto
-costo > $100M (LOMUSTINA ECZANE $886.261.436,74; REMODULIN x2) → columna ampliada
-a NUMERIC(14,2); (3) **OK: 85.089 filas cargadas**.
-
-**Datos del catálogo cargado (2026-07-07):** 85.089 productos activos, solo
-21.628 con precio (los otros ~63.500 vienen NULL de Oracle), 846 marcas
-distintas (en MAYÚSCULAS, ej. 'ABBOTT'), precio máximo $886.261.436,74.
-**Duración del sync: ~9 min** (5,7 min lectura Oracle + 3,5 min INSERT).
+**Datos del catálogo cargado:** 85.680 productos activos, **65.308 con precio**
+(76%, desde que se usa `PRECIO_FARMACIA` en vez de `PRECIO_PUBLICO`), 16.623 con
+stock, 846 marcas en MAYÚSCULAS. Duración del sync: ~9 min (5,7 lectura Oracle
+fila-por-fila + 3,5 INSERT).
 
 ---
 
-## 4. ⚡ PRÓXIMO PASO INMEDIATO: programar el sync cada hora
+## 4. ⚡ PRÓXIMO PASO INMEDIATO: poner a andar el workflow
 
-Comando exacto (mostrárselo a Claude o correrlo en PowerShell como administrador
-si hace falta):
-```
-schtasks /create /tn "Sync Stock Farmar" /tr "\"C:\Users\BACKUP-FCIA\Desktop\random\n8n-bot-farmacia\ConsultasOracle\sync_stock.bat\"" /sc hourly /st 00:00
-```
-Consideraciones: cada corrida tarda ~9 min y reemplaza la tabla entera en una
-transacción (el bot nunca ve la tabla vacía ni a medias). Errores quedan en
-`ConsultasOracle\logs\sync_stock.log`. La PC tiene que estar prendida y con
-Docker Desktop corriendo para que el destino (Postgres) exista.
+Todo lo de datos está resuelto. Falta el bot en sí. **No hace falta WhatsApp ni
+ngrok para esta parte**: el flujo se prueba entero dentro de n8n.
+
+1. **Importar el flujo**: en http://localhost:5678 → Workflows → ⋯ →
+   *Import from File* → `n8n\farmar-whatsapp-bot-v2.json` (20 nodos).
+2. **Crear las 3 credenciales** (detalle en `n8n\LEEME.md`):
+   - **Postgres** → host `postgres` (⚠ NO `localhost`: n8n corre en Docker),
+     base `farmar_bot`, usuario y password del `.env`.
+   - **Header Auth** para Claude → `x-api-key` con la API key de Anthropic,
+     más el header `anthropic-version: 2023-06-01`.
+   - **WhatsApp Business Cloud** → recién cuando exista la app de Meta.
+3. **Reemplazar** `CAMBIAR_NUMERO_ADMIN_FALLBACK` en el nodo
+   *Preparar Alerta Comprador* por un número real.
+4. **Probar nodo por nodo** con *Execute Node*, usando los valores de la tabla
+   "Datos para probar" de `CONSULTAS_PARA_N8N.md` (código `7798032935096`,
+   troquel `4407513`, nombre `geniol`, agotado `2000000032603`).
+
+Cuando el flujo responda bien, recién ahí: app de Meta con su **número de prueba
+gratuito** (⚠ nunca registrar un número personal en la API: se pierde el
+WhatsApp de ese número), ngrok, y `WEBHOOK_URL` en el `.env`.
 
 ---
 
-## 5. Pendientes siguientes (después del sync OK)
+## 5. Pendientes siguientes
 
 ### 5.1 Cargar las asignaciones reales de compradores
 Ya está resuelto el matching: `proveedores` tiene las **846 marcas reales** del
@@ -145,13 +152,21 @@ Access Token → configurar webhook con URL de ngrok + Verify Token inventado �
 suscribirse al campo `messages`. Token y Phone Number ID se cargan EN N8N
 (credencial Header Auth + URL de Graph API), no en el .env.
 
-### 5.5 Armar el workflow n8n (a mano, decisión del usuario)
-Ya hay un workflow iniciado en la UI. Tablas disponibles: `farmacias_autorizadas`
-(whitelist), `productos` (85.089 filas reales ya cargadas), `proveedores`,
-`compradores` (derivación).
+### 5.5 Programar el sync cada hora
+Comando exacto (PowerShell, como administrador si hace falta):
+
+    schtasks /create /tn "Sync Stock Farmar" /tr "\"C:\Users\BACKUP-FCIA\Desktop\random\n8n-bot-farmacia\ConsultasOracle\sync_stock.bat\"" /sc hourly /st 00:00
+
+Cada corrida tarda ~9 min y reemplaza la tabla entera dentro de una transacción,
+así que el bot nunca ve la tabla vacía ni a medias. Los errores quedan en
+`ConsultasOracle\logs\sync_stock.log`. La PC tiene que estar prendida y con
+Docker Desktop corriendo, porque el destino es el Postgres del contenedor.
 
 ### 5.6 Limpieza menor
 - Borrar `_archivos_viejos\` (duplicados) y el cascarón `C:\Users\BACKUP-FCIA\ConsultasOracle`.
+- Borrar los volúmenes Docker viejos, que quedaron como respaldo del renombre:
+  `scarpparafarmalifeysdin_postgres_data` y `scarpparafarmalifeysdin_n8n_data`
+  (más los `n8n-bot-farmacia_*`, que nunca tuvieron datos).
 - Los `consultas_sql\_diag_*.sql` son diagnósticos reutilizables; borrarlos si molestan.
 
 ---
