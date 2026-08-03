@@ -1,5 +1,5 @@
 {
-  "name": "Farmalife - Bot WhatsApp Farmacias (v2)",
+  "name": "Farmar - Bot WhatsApp Farmacias (v2)",
   "nodes": [
     {
       "parameters": {
@@ -139,7 +139,7 @@
       "credentials": {
         "postgres": {
           "id": "",
-          "name": "Postgres Farmalife (asignar)"
+          "name": "Postgres Farmar (asignar)"
         }
       }
     },
@@ -213,7 +213,7 @@
       "credentials": {
         "postgres": {
           "id": "",
-          "name": "Postgres Farmalife (asignar)"
+          "name": "Postgres Farmar (asignar)"
         }
       }
     },
@@ -330,7 +330,7 @@
       "credentials": {
         "postgres": {
           "id": "",
-          "name": "Postgres Farmalife (asignar)"
+          "name": "Postgres Farmar (asignar)"
         }
       }
     },
@@ -389,7 +389,7 @@
       "credentials": {
         "postgres": {
           "id": "",
-          "name": "Postgres Farmalife (asignar)"
+          "name": "Postgres Farmar (asignar)"
         }
       }
     },

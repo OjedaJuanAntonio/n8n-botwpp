@@ -29,7 +29,7 @@
 
 **Ejecución:** `docker compose config` validó OK. Al correr `setup.sh`, Docker
 Desktop no estaba corriendo → se arrancó y en ~65 s estuvo listo. Contenedores
-`farmalife_n8n` y `farmalife_postgres` levantados, init.sql aplicado, n8n
+`farmar_n8n` y `farmar_postgres` levantados, init.sql aplicado, n8n
 respondiendo en http://localhost:5678. El usuario creó su cuenta de owner en n8n
 y empezó un workflow en la UI. Prefirió armar el workflow antes de configurar ngrok.
 
@@ -57,7 +57,7 @@ detalle en `ConsultasOracle\CONTEXTO_DEL_PROYECTO.md`).
    `consultas_sql\stock_sync.sql` (aliases: codigo_barra, codigo_farmacia,
    nombre, marca_proveedor, stock vía `DW_SCO.BUSCO_STOCK_PROD(ITEM_ID,'T')`, precio).
 3. **Paso 2 — config.py:** se agregaron las 5 variables `POSTGRES_*` con los
-   valores reales del `.env` (localhost:5432, farmalife_bot, farmalife_admin).
+   valores reales del `.env` (localhost:5432, farmar_bot, farmar_admin).
 4. **Paso 3 — driver Postgres:** `psycopg2-binary` **falló** (no publica wheel
    para Python 32 bits; intenta compilar y no hay pg_config) → se instaló
    **pg8000 1.31.5**. Diff de adaptación revisado y aprobado por el usuario:

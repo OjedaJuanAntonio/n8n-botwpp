@@ -16,7 +16,7 @@
 -- porque este repositorio es público; la copia con los datos del piloto está
 -- en datos/02_datos_negocio.local.sql (fuera de git).
 --
---   docker exec -i farmalife_postgres psql -U farmalife_admin -d farmalife_bot \
+--   docker exec -i farmar_postgres psql -U farmar_admin -d farmar_bot \
 --       -v ON_ERROR_STOP=1 -f - < sql/02_datos_negocio.sql
 -- ============================================================================
 

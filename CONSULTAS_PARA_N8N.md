@@ -12,7 +12,7 @@ En n8n: **Credentials → New → Postgres**.
 | Campo | Valor | Ojo |
 |---|---|---|
 | Host | `postgres` | ⚠ **NO** `localhost`. n8n corre dentro de Docker y ve a la base por el nombre del servicio de `docker-compose.yml`. |
-| Database | `farmalife_bot` | |
+| Database | `farmar_bot` | |
 | User | el `POSTGRES_USER` del `.env` | |
 | Password | el `POSTGRES_PASSWORD` del `.env` | |
 | Port | `5432` | |

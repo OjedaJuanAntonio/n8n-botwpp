@@ -1,13 +1,13 @@
 # Nombre del proyecto Compose. Se fija explicitamente porque la carpeta se
-# renombro (antes "scarp para farmalife ysdin"): sin esto, Compose derivaria el
+# renombro y el proyecto paso a llamarse Farmar: sin esto, Compose derivaria el
 # nombre de la carpeta actual, crearia volumenes nuevos VACIOS y se perderian
 # de vista los datos ya cargados (catalogo de productos y workflows de n8n).
-name: scarpparafarmalifeysdin
+name: farmar-bot-whatsapp
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: farmalife_postgres
+    container_name: farmar_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -32,7 +32,7 @@ services:
 
   n8n:
     image: docker.n8n.io/n8nio/n8n
-    container_name: farmalife_n8n
+    container_name: farmar_n8n
     restart: unless-stopped
     ports:
       - "5678:5678"

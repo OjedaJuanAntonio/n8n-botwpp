@@ -55,7 +55,7 @@ Oracle) estas variables nuevas, con los mismos valores que pusiste en el
 
     POSTGRES_HOST = "localhost"   # el script corre en la misma maquina
     POSTGRES_PORT = 5432          # el puerto que expusiste en docker-compose
-    POSTGRES_DB   = "farmalife"
+    POSTGRES_DB   = "farmar_bot"
     POSTGRES_USER = "..."
     POSTGRES_PASSWORD = "..."
 """

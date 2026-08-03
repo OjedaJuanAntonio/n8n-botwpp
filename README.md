@@ -1,4 +1,4 @@
-# Bot de WhatsApp (Farmalife / Ysdin) — Entorno local de desarrollo
+# Bot de WhatsApp para las farmacias Farmar — Entorno local de desarrollo
 
 Este repo contiene **solo la infraestructura** para levantar n8n + la base
 de datos de negocio en local. El workflow del bot (nodos, lógica, mensajes)

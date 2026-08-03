@@ -1,6 +1,6 @@
 # Workflow de n8n
 
-`farmalife-whatsapp-bot-v2.json` — flujo del bot listo para importar.
+`farmar-whatsapp-bot-v2.json` — flujo del bot listo para importar.
 
 Parte del workflow original (armado el 2026-07-06, que quedó en `Downloads` y
 **nunca llegó a importarse**) y lo actualiza al esquema actual de la base.
@@ -13,7 +13,7 @@ En n8n: **Workflows → ⋯ → Import from File** y elegir el JSON.
 
 | Nodo | Credencial | Datos |
 |---|---|---|
-| Los 4 nodos Postgres | **Postgres** | Host `postgres` (⚠ no `localhost`: n8n corre en Docker), base `farmalife_bot`, usuario y password del `.env`, puerto 5432, SSL disable |
+| Los 4 nodos Postgres | **Postgres** | Host `postgres` (⚠ no `localhost`: n8n corre en Docker), base `farmar_bot`, usuario y password del `.env`, puerto 5432, SSL disable |
 | `Clasificar con Claude` | **Header Auth** | Name: `x-api-key` · Value: tu API key de Anthropic. Agregar también el header `anthropic-version: 2023-06-01` |
 | Los 4 nodos WhatsApp | **WhatsApp Business Cloud** | Access Token y Phone Number ID de la app de Meta |
 

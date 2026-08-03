@@ -10,10 +10,15 @@
 
 ## 1. La idea del proyecto
 
-Un **bot de WhatsApp para la farmacia**: las farmacias autorizadas (whitelist de
-números) escriben por WhatsApp para consultar **stock y precio** de productos y
-hacer pedidos. Cada pedido se deriva al **comprador** responsable de la marca
-(ej: pedidos de productos Farmalife → comprador de Farmalife; Ysdin → el de Ysdin).
+Un **bot de WhatsApp para la red de farmacias Farmar** (~150 farmacias). Las
+farmacias autorizadas (whitelist de números) escriben por WhatsApp para
+consultar **stock y precio** y hacer pedidos. Cada pedido se deriva al
+**comprador** de Jufec SA responsable de esa marca (ej: un pedido de un producto
+ABBOTT va al comprador que atiende ABBOTT).
+
+Quién es quién: **Farmar** es la red de farmacias que usa el bot; **Jufec SA** es
+la droguería / centro administrativo y logístico que las abastece, y de donde
+salen el catálogo (Oracle) y los compradores.
 
 **Piezas:**
 
@@ -24,7 +29,7 @@ WhatsApp Cloud API (Meta)
    n8n (Docker, localhost:5678)  ←  orquesta el flujo del bot (SE ARMA A MANO en la UI)
         │  nodo Postgres
         ▼
-   PostgreSQL (Docker, localhost:5432, base "farmalife_bot")
+   PostgreSQL (Docker, localhost:5432, base "farmar_bot")
         ▲  TRUNCATE + INSERT transaccional, cada hora (pendiente de programar)
         │
    sync_stock.py (Python 32 bits)  ←  lee Oracle vía ADODB/MSDAORA
@@ -69,7 +74,7 @@ WhatsApp Cloud API (Meta)
 
 | Pieza | Estado |
 |---|---|
-| Docker n8n + Postgres | ✅ Corriendo (farmalife_n8n, farmalife_postgres healthy) |
+| Docker n8n + Postgres | ✅ Corriendo (farmar_n8n, farmar_postgres healthy) |
 | Esquema Postgres | ✅ Final: codigo_barra/codigo_farmacia, marca_proveedor texto, precio NUMERIC(14,2) |
 | sql\init.sql | ✅ Actualizado, refleja el esquema final |
 | stock_sync.sql | ✅ Consulta real validada ('Active' existe; valores: Active / No Planif / Inactive) |
@@ -100,7 +105,7 @@ distintas (en MAYÚSCULAS, ej. 'ABBOTT'), precio máximo $886.261.436,74.
 Comando exacto (mostrárselo a Claude o correrlo en PowerShell como administrador
 si hace falta):
 ```
-schtasks /create /tn "Sync Stock Farmalife" /tr "\"C:\Users\BACKUP-FCIA\Desktop\random\n8n-bot-farmacia\ConsultasOracle\sync_stock.bat\"" /sc hourly /st 00:00
+schtasks /create /tn "Sync Stock Farmar" /tr "\"C:\Users\BACKUP-FCIA\Desktop\random\n8n-bot-farmacia\ConsultasOracle\sync_stock.bat\"" /sc hourly /st 00:00
 ```
 Consideraciones: cada corrida tarda ~9 min y reemplaza la tabla entera en una
 transacción (el bot nunca ve la tabla vacía ni a medias). Errores quedan en
@@ -111,12 +116,14 @@ Docker Desktop corriendo para que el destino (Postgres) exista.
 
 ## 5. Pendientes siguientes (después del sync OK)
 
-### 5.1 Chequear el matching de marcas
-`productos.marca_proveedor` llega de Oracle en MAYÚSCULAS (ej: "PUIG ARGENTINA",
-"BAGO", "ROCHE"). Los seeds de `proveedores.nombre_marca` dicen 'Farmalife'/'Ysdin'.
-Cuando se definan las marcas reales del bot: actualizar `proveedores` y `compradores`
-con los nombres EXACTOS que devuelve Oracle (o comparar case-insensitive en las
-queries del workflow n8n). Ver marcas disponibles:
+### 5.1 Cargar las asignaciones reales de compradores
+Ya está resuelto el matching: `proveedores` tiene las **846 marcas reales** del
+catálogo, con el nombre exacto que devuelve Oracle en MAYÚSCULAS ("PUIG
+ARGENTINA", "BAGO", "ROCHE"). Hoy **todas** apuntan al comprador de prueba.
+
+Falta limpiar `datos/compradores_por_laboratorio.csv` (361 filas con `#N/A`, 326
+vacías, y diferencias de escritura tipo `ABBOT`/`ABBOTT`) y cargar la asignación
+real de cada comprador. Ver marcas disponibles:
 `SELECT DISTINCT marca_proveedor FROM productos ORDER BY 1;`
 
 ### 5.2 Cambiar las contraseñas placeholder ⚠
@@ -126,7 +133,7 @@ que deben mantenerse sincronizados**:
 - `ConsultasOracle\config.py`
 - La base viva: la imagen de Postgres solo lee el env al PRIMER init del volumen,
   así que además hay que correr:
-  `docker exec -it farmalife_postgres psql -U farmalife_admin -d farmalife_bot -c "ALTER USER farmalife_admin PASSWORD 'nueva';"`
+  `docker exec -it farmar_postgres psql -U farmar_admin -d farmar_bot -c "ALTER USER farmar_admin PASSWORD 'nueva';"`
 
 ### 5.3 Exponer n8n con HTTPS (README §3)
 `ngrok http 5678` → copiar URL → pegarla en `WEBHOOK_URL` del `.env` →
