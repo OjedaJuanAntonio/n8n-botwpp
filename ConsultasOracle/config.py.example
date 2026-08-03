@@ -1,0 +1,36 @@
+# -*- coding: utf-8 -*-
+"""
+PLANTILLA de configuracion. Copiar este archivo como "config.py" y completar
+con los valores reales. El archivo config.py NO se versiona (esta en
+.gitignore) porque contiene credenciales.
+
+    copy config.py.example config.py     (Windows)
+    cp config.py.example config.py       (Git Bash)
+
+La base Oracle es 10g (10.2.0.1). Nos conectamos con el proveedor OLE DB de
+Windows (MSDAORA) reutilizando el cliente Oracle que ya instalo Discoverer.
+Por eso este proyecto se corre con el Python de 32 bits (C:\\Python312-32).
+"""
+
+# ---------------------------------------------------------------------------
+# Oracle (base de reportes DW, SOLO LECTURA)
+# ---------------------------------------------------------------------------
+USUARIO = "COMPLETAR"
+CONTRASENA = "COMPLETAR"
+
+# Alias de la base segun el tnsnames.ora del cliente Discoverer.
+ALIAS_BASE = "DW"
+
+# Cliente Oracle de Discoverer (necesario para que MSDAORA resuelva el alias):
+ORACLE_HOME = r"D:\oracle\BIToolsHome_1"
+TNS_ADMIN = r"D:\oracle\BIToolsHome_1\network\admin"
+
+# ---------------------------------------------------------------------------
+# Postgres (base de negocio del bot). Deben coincidir con el .env del
+# docker-compose; si cambia la password ahi, actualizarla tambien aca.
+# ---------------------------------------------------------------------------
+POSTGRES_HOST = "localhost"
+POSTGRES_PORT = 5432
+POSTGRES_DB = "farmalife_bot"
+POSTGRES_USER = "COMPLETAR"
+POSTGRES_PASSWORD = "COMPLETAR"

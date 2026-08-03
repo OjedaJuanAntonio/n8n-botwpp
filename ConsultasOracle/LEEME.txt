@@ -1,0 +1,76 @@
+========================================================================
+  CONSULTAS ORACLE EN PYTHON  (reemplazo de Oracle Discoverer Desktop)
+========================================================================
+
+QUE ES ESTO
+-----------
+Corre las mismas consultas que tenias en los .DIS de Discoverer, pero
+directo contra la base Oracle (alias DW = <IP-SERVIDOR-ORACLE>:1521), sin abrir
+Discoverer. El resultado sale a un Excel en la carpeta "salidas".
+
+YA ESTA TODO INSTALADO Y PROBADO. La conexion funciona.
+
+
+COMO FUNCIONA (resumen tecnico)
+-------------------------------
+- La base es Oracle 10g (10.2.0.1). Es vieja, asi que se conecta con el
+  proveedor OLE DB de Windows (MSDAORA) reutilizando el cliente Oracle que
+  ya tenia Discoverer (D:\oracle\BIToolsHome_1). No hizo falta instalar
+  ningun cliente nuevo.
+- Se usa un Python de 32 bits dedicado en C:\Python312-32 (no toca tu otro
+  Python). Los .bat ya apuntan a ese Python, no tenes que preocuparte.
+- Credenciales: las mismas de Discoverer. Estan en config.py.
+
+
+USO DEL DIA A DIA
+-----------------
+1) SACAR EL SQL DE UNA CONSULTA (una vez por consulta):
+   - Abrir el workbook .DIS en Discoverer Desktop.
+   - Menu  Ver > Inspector de SQL  (Show SQL).
+   - Copiar TODO el SELECT.
+   - Guardarlo como un .sql dentro de la carpeta  consultas_sql\
+     por ejemplo:  consultas_sql\stock_jeman.sql
+
+2) CORRER LA CONSULTA:
+   Doble clic en  correr.bat  NO (necesita el nombre del .sql).
+   Mejor: abrir PowerShell en esta carpeta y escribir:
+
+       .\correr.bat consultas_sql\stock_jeman.sql
+
+   Si la consulta pide parametros (los :Deposito, :proveedor de Discoverer):
+
+       .\correr.bat consultas_sql\stock_jeman.sql --p Deposito=83 --p proveedor=JEMAN
+
+   El Excel queda en la carpeta  salidas\
+
+3) PROBAR LA CONEXION (si algo falla):
+       .\probar.bat
+
+
+OPCIONES UTILES (van al final del comando)
+------------------------------------------
+   --max 50          traer solo 50 filas (para probar rapido)
+   --csv             generar tambien un .csv
+   --salida x.xlsx   elegir el nombre del archivo de salida
+
+
+ARCHIVOS DE ESTA CARPETA
+------------------------
+   config.py            usuario/contrasena/alias de la base
+   probar.bat           prueba de conexion
+   correr.bat           corre una consulta y exporta a Excel
+   correr.py            (logica; lo llama correr.bat)
+   probar_conexion.py   (logica; lo llama probar.bat)
+   _oracle_ado.py       (conexion comun; no se toca)
+   consultas_sql\       aca guardas los .sql sacados de Discoverer
+   salidas\             aca aparecen los Excel/CSV resultantes
+
+
+NOTAS
+-----
+- Los .DIS NO contienen el SQL en texto: guardan referencias internas de
+  Discoverer (capa EUL). Por eso el SQL hay que sacarlo del Inspector de SQL
+  (paso 1). Una vez copiado, esa consulta ya no depende mas de Discoverer.
+- Los parametros se reemplazan por texto en el SQL. Es para uso interno;
+  no expongas esto a usuarios externos / internet.
+- Si cambia la contrasena de la base, editar config.py.

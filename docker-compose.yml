@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: farmalife_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      # Puerto expuesto al host para poder conectarse desde el nodo Postgres
+      # de n8n usando "localhost" (o desde un cliente SQL tipo DBeaver/pgAdmin).
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      # Volumen persistente: los datos sobreviven a "docker compose down".
+      - postgres_data:/var/lib/postgresql/data
+      # Se ejecuta UNA sola vez, al crear el contenedor por primera vez con
+      # el volumen vacío. Si ya corriste esto antes y querés que se re-ejecute,
+      # tenés que borrar el volumen (ver README.md).
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: farmalife_n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # Zona horaria para que los timestamps de ejecuciones/cron coincidan
+      # con la hora local de Argentina.
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-America/Argentina/Buenos_Aires}
+      TZ: ${GENERIC_TIMEZONE:-America/Argentina/Buenos_Aires}
+
+      # Autenticación básica de la interfaz web de n8n.
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
+
+      # URL pública usada para construir las URLs de los nodos Webhook.
+      # Tiene que apuntar a la URL HTTPS de ngrok/Cloudflare Tunnel una vez
+      # que lo levantes (ver README.md), no a localhost.
+      WEBHOOK_URL: ${WEBHOOK_URL}
+      N8N_EDITOR_BASE_URL: ${WEBHOOK_URL}
+    volumes:
+      # Volumen persistente para la base de datos interna de n8n (SQLite),
+      # credenciales cifradas, workflows guardados, etc.
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  n8n_data:

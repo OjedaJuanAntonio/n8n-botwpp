@@ -1,0 +1,31 @@
+# ============================================================================
+# .gitignore — repositorio PÚBLICO. Nada de credenciales ni datos reales.
+# ============================================================================
+
+# --- Credenciales (NUNCA subir) -------------------------------------------
+.env
+ConsultasOracle/config.py
+
+# --- Datos reales del negocio (catálogo, precios, planillas exportadas) ----
+ConsultasOracle/salidas/
+ConsultasOracle/logs/
+historico_precios_ysdin.csv
+
+# --- Documentos comerciales ------------------------------------------------
+Presupuesto_Bot_WhatsApp_Farmacias.pdf
+Presupuesto_Bot_WhatsApp_Farmacias.docx
+
+# --- Fuera del alcance de este repo (proyecto de scraping, se mezcló) -----
+scrap_farmalife.py
+
+# --- Temporales / basura ---------------------------------------------------
+_archivos_viejos/
+__pycache__/
+*.py[cod]
+*.xlsx
+*.csv
+.claude/
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
