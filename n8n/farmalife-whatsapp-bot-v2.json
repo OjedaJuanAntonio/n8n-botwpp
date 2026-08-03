@@ -1,0 +1,648 @@
+{
+  "name": "Farmalife - Bot WhatsApp Farmacias (v2)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": [
+          "GET",
+          "POST"
+        ],
+        "path": "whatsapp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.query[\"hub.mode\"] }}",
+              "rightValue": "subscribe",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "leftValue": "={{ $json.query[\"hub.verify_token\"] }}",
+              "rightValue": "CAMBIAR_ESTE_VERIFY_TOKEN",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-verificacion",
+      "name": "Es Verificación Meta?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        220,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.query[\"hub.challenge\"] }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "node-respond-challenge",
+      "name": "Responder Challenge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        440,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst entry = body?.entry?.[0];\nconst change = entry?.changes?.[0];\nconst value = change?.value;\nconst message = value?.messages?.[0];\n\nif (!message) {\n  return [{ json: { es_mensaje: false } }];\n}\n\nreturn [{\n  json: {\n    es_mensaje: true,\n    from: message.from,\n    texto: message.text?.body || '',\n    message_id: message.id,\n    timestamp: message.timestamp,\n    nombre_contacto: value.contacts?.[0]?.profile?.name || ''\n  }\n}];"
+      },
+      "id": "node-extraer-datos",
+      "name": "Extraer Datos Mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.es_mensaje }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-mensaje-valido",
+      "name": "Es Mensaje Válido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM farmacias_autorizadas WHERE numero_whatsapp = $1 AND activo = true",
+        "options": {
+          "queryReplacement": "={{ $json.from }}"
+        }
+      },
+      "id": "node-validar-whitelist",
+      "name": "Validar Whitelist",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        880,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres Farmalife (asignar)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.numero_whatsapp }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-autorizado",
+      "name": "Está Autorizado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "phoneNumberId": "CAMBIAR_PHONE_NUMBER_ID",
+        "recipientPhone": "={{ $('Extraer Datos Mensaje').item.json.from }}",
+        "textBody": "Este número no está habilitado para operar con nuestro sistema automático. Por favor comunicate con tu representante comercial habitual."
+      },
+      "id": "node-enviar-rechazo",
+      "name": "Enviar Rechazo",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        420
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "",
+          "name": "WhatsApp Cloud API (asignar)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT DISTINCT nombre_marca FROM proveedores WHERE activo = true"
+      },
+      "id": "node-marcas-activas",
+      "name": "Traer Marcas Activas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1320,
+        220
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres Farmalife (asignar)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// El listado de marcas ya no se inyecta en el prompt: son 846 y multiplicaba\n// el costo de tokens en cada mensaje. La marca se resuelve por SQL despues.\nconst datos = $('Extraer Datos Mensaje').item.json;\nreturn [{ json: { mensaje_cliente: datos.texto, numero_from: datos.from } }];"
+      },
+      "id": "node-preparar-prompt",
+      "name": "Preparar Prompt Claude",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: \"claude-sonnet-5\", max_tokens: 400, temperature: 0, system: \"Sos el motor de clasificacion de un bot de WhatsApp de una drogueria farmaceutica. Las farmacias te escriben para consultar stock y precio, o para hacer un pedido.\\n\\nDevolves SIEMPRE un unico objeto JSON valido, sin texto adicional, sin markdown, sin explicaciones. El formato exacto es:\\n{\\n  \\\"intencion\\\": \\\"consulta_stock\\\" | \\\"pedido\\\" | \\\"saludo\\\" | \\\"otro\\\",\\n  \\\"termino_busqueda\\\": string | null,\\n  \\\"codigo_detectado\\\": string | null,\\n  \\\"marca_mencionada\\\": string | null,\\n  \\\"cantidad_solicitada\\\": number | null,\\n  \\\"requiere_humano\\\": boolean,\\n  \\\"motivo_derivacion\\\": string | null,\\n  \\\"confianza\\\": \\\"alta\\\" | \\\"media\\\" | \\\"baja\\\"\\n}\\n\\nReglas:\\n- termino_busqueda: el nombre del producto tal como lo escribio la farmacia, sin cantidades ni presentacion. Ej: 'necesito 10 cajas de geniol 500' -> 'geniol 500'.\\n- codigo_detectado: si el mensaje trae una secuencia de 6 a 14 digitos, es un codigo (de barras, interno o troquel). Ponelo ahi y dejalo tambien fuera de termino_busqueda.\\n- marca_mencionada: solo si nombra explicitamente un laboratorio (ej: Bayer, Abbott).\\n- requiere_humano en true cuando: pide una cuenta corriente, reclama por una entrega, habla de una factura, negocia precios o condiciones, o el mensaje es ambiguo y no se entiende que producto quiere.\\n- Nunca inventes un producto ni un codigo. Si no estas seguro, confianza 'baja' y requiere_humano true.\\n- Los saludos sin consulta concreta son intencion 'saludo' y requiere_humano false.\", messages: [ { role: \"user\", content: \"MENSAJE DE LA FARMACIA: \" + $json.mensaje_cliente } ] }) }}",
+        "options": {}
+      },
+      "id": "node-clasificar-claude",
+      "name": "Clasificar con Claude",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        220
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Anthropic API Key (asignar, header x-api-key)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let resultado;\ntry {\n  const texto = $input.first().json.content[0].text;\n  resultado = JSON.parse(texto);\n} catch (e) {\n  resultado = {\n    intencion: 'otro',\n    termino_busqueda: null,\n    marca_proveedor: null,\n    codigo_detectado: null,\n    cantidad_solicitada: null,\n    requiere_humano: true,\n    motivo_derivacion: 'Error de clasificación (JSON inválido)',\n    confianza: 'baja'\n  };\n}\n\nreturn [{\n  json: {\n    ...resultado,\n    numero_from: $('Preparar Prompt Claude').item.json.numero_from,\n    mensaje_original: $('Preparar Prompt Claude').item.json.mensaje_cliente\n  }\n}];"
+      },
+      "id": "node-parsear-json",
+      "name": "Parsear JSON Claude",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.requiere_humano }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-requiere-humano",
+      "name": "Requiere Humano?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT p.nombre,\n       p.marca_proveedor,\n       p.stock,\n       p.precio,\n       p.monodroga,\n       CASE WHEN p.stock > 0 THEN 'DISPONIBLE' ELSE 'SIN_STOCK' END AS estado\nFROM productos p\nWHERE ($2 <> '' AND ($2 = p.codigo_barra OR $2 = p.codigo_farmacia OR $2 = p.troquel))\n   OR ($1 <> '' AND p.nombre % $1)\nORDER BY (p.stock > 0) DESC,\n         CASE WHEN $1 <> '' THEN similarity(p.nombre, $1) ELSE 0 END DESC,\n         p.stock DESC\nLIMIT 5",
+        "options": {
+          "queryReplacement": "={{ $json.termino_busqueda }},{{ $json.codigo_detectado }}"
+        }
+      },
+      "id": "node-buscar-stock",
+      "name": "Buscar Stock",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2420,
+        340
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres Farmalife (asignar)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const filas = $input.all().map(i => i.json);\n\nif (filas.length === 0) {\n  return [{ json: {\n    respuesta: 'No encontre ese producto en el catalogo. Te derivo con un asesor para confirmarlo.',\n    sin_resultados: true\n  } }];\n}\n\nconst money = v => (v === null || v === undefined)\n  ? 'precio a confirmar'\n  : '$' + Number(v).toLocaleString('es-AR', { minimumFractionDigits: 2 });\n\nconst disponibles = filas.filter(p => p.estado === 'DISPONIBLE');\nconst agotados    = filas.filter(p => p.estado === 'SIN_STOCK');\n\nlet partes = [];\nif (disponibles.length) {\n  partes.push('Disponible:\n' + disponibles\n    .map(p => `• ${p.nombre} — ${p.stock} u. — ${money(p.precio)}`).join('\n'));\n}\nif (agotados.length) {\n  partes.push('Sin stock por el momento:\n' + agotados\n    .map(p => `• ${p.nombre}`).join('\n'));\n}\n\n// Una sola respuesta consolidada: cada mensaje saliente se factura aparte.\nreturn [{ json: {\n  respuesta: partes.join('\n\n'),\n  sin_resultados: false,\n  hay_disponibles: disponibles.length > 0\n} }];"
+      },
+      "id": "node-formatear-stock",
+      "name": "Formatear Respuesta Stock",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "phoneNumberId": "CAMBIAR_PHONE_NUMBER_ID",
+        "recipientPhone": "={{ $('Parsear JSON Claude').item.json.numero_from }}",
+        "textBody": "={{ $json.respuesta }}"
+      },
+      "id": "node-enviar-respuesta-farmacia",
+      "name": "Enviar Respuesta Farmacia",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        2860,
+        340
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "",
+          "name": "WhatsApp Cloud API (asignar)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT c.nombre, c.numero_whatsapp\nFROM proveedores pr\nJOIN compradores c ON c.id = pr.comprador_id\nWHERE pr.nombre_marca = $1 AND c.activo = TRUE\nLIMIT 1",
+        "options": {
+          "queryReplacement": "={{ $json.marca_proveedor }}"
+        }
+      },
+      "id": "node-buscar-comprador",
+      "name": "Buscar Comprador Asignado",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2420,
+        120
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres Farmalife (asignar)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const filas = $input.all();\nconst datosClasificacion = $('Parsear JSON Claude').first().json;\n\n// Fallback: si no hay comprador asignado por marca, usar admin general\nconst comprador = filas.length > 0\n  ? filas[0].json\n  : { nombre: 'Administración General', numero_whatsapp: 'CAMBIAR_NUMERO_ADMIN_FALLBACK' };\n\nreturn [{\n  json: {\n    comprador_nombre: comprador.nombre,\n    comprador_numero: comprador.numero_whatsapp,\n    farmacia_numero: datosClasificacion.numero_from,\n    mensaje_original: datosClasificacion.mensaje_original,\n    motivo: datosClasificacion.motivo_derivacion || 'Consulta general'\n  }\n}];"
+      },
+      "id": "node-preparar-alerta",
+      "name": "Preparar Alerta Comprador",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "phoneNumberId": "CAMBIAR_PHONE_NUMBER_ID",
+        "recipientPhone": "={{ $json.comprador_numero }}",
+        "textBody": "=Nueva consulta derivada.\\nFarmacia: {{ $json.farmacia_numero }}\\nMotivo: {{ $json.motivo }}\\nMensaje original: \\\"{{ $json.mensaje_original }}\\\"\\n\\nContactar directo: https://wa.me/{{ $json.farmacia_numero }}"
+      },
+      "id": "node-enviar-alerta-comprador",
+      "name": "Enviar Alerta Comprador",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        2860,
+        120
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "",
+          "name": "WhatsApp Cloud API (asignar)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "phoneNumberId": "CAMBIAR_PHONE_NUMBER_ID",
+        "recipientPhone": "={{ $json.farmacia_numero }}",
+        "textBody": "Tu consulta fue derivada al especialista correspondiente, en breve te va a contactar."
+      },
+      "id": "node-avisar-derivacion",
+      "name": "Avisar Derivación a Farmacia",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        3080,
+        120
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "",
+          "name": "WhatsApp Cloud API (asignar)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Es Verificación Meta?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Extraer Datos Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Es Verificación Meta?": {
+      "main": [
+        [
+          {
+            "node": "Responder Challenge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Extraer Datos Mensaje": {
+      "main": [
+        [
+          {
+            "node": "Es Mensaje Válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Es Mensaje Válido?": {
+      "main": [
+        [
+          {
+            "node": "Validar Whitelist",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Validar Whitelist": {
+      "main": [
+        [
+          {
+            "node": "Está Autorizado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Está Autorizado?": {
+      "main": [
+        [
+          {
+            "node": "Preparar Prompt Claude",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar Rechazo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Prompt Claude": {
+      "main": [
+        [
+          {
+            "node": "Clasificar con Claude",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clasificar con Claude": {
+      "main": [
+        [
+          {
+            "node": "Parsear JSON Claude",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsear JSON Claude": {
+      "main": [
+        [
+          {
+            "node": "Requiere Humano?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requiere Humano?": {
+      "main": [
+        [
+          {
+            "node": "Buscar Comprador Asignado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Buscar Stock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Stock": {
+      "main": [
+        [
+          {
+            "node": "Formatear Respuesta Stock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear Respuesta Stock": {
+      "main": [
+        [
+          {
+            "node": "Enviar Respuesta Farmacia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Comprador Asignado": {
+      "main": [
+        [
+          {
+            "node": "Preparar Alerta Comprador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Alerta Comprador": {
+      "main": [
+        [
+          {
+            "node": "Enviar Alerta Comprador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Alerta Comprador": {
+      "main": [
+        [
+          {
+            "node": "Avisar Derivación a Farmacia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
