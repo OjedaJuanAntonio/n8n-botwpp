@@ -109,8 +109,10 @@ Y asignarla al nodo `Clasificar con IA`. Poner la key como header, no como
 
 ### Detalles del pedido
 
-- **Modelo**: `gemini-2.0-flash` (en la URL). Para bajar costos en producción se
-  puede cambiar a `gemini-2.0-flash-lite`.
+- **Modelo**: `gemini-3.5-flash-lite` (en la URL). Está pensado justo para esto:
+  clasificación y extracción de datos de alto volumen con baja latencia y costo.
+  ⚠ **`gemini-2.0-flash` fue retirado el 2026-03-03**; si ves errores raros,
+  lo primero a revisar es que el modelo de la URL siga vigente.
 - **`responseMimeType: "application/json"`** fuerza a que la respuesta sea JSON
   válido, que es justo lo que necesita el nodo siguiente.
 - El parser (`Parsear JSON IA`) lee `candidates[0].content.parts[0].text`, y
@@ -123,3 +125,23 @@ Y asignarla al nodo `Clasificar con IA`. Poner la key como header, no como
 Cambiar la URL a `https://api.anthropic.com/v1/messages`, el body al formato
 `{model, max_tokens, system, messages}` y la credencial a `x-api-key` más el
 header `anthropic-version: 2023-06-01`. El parser ya contempla ambos formatos.
+
+
+## Si aparece "The service is receiving too many requests" (429)
+
+El free tier de Gemini permite del orden de **15 requests por minuto** y 1.500
+por día. Un 429 puede venir de tres lados:
+
+1. **Modelo retirado o inexistente** en la URL. Verificá qué modelos habilita tu
+   API key:
+
+       curl -s "https://generativelanguage.googleapis.com/v1beta/models" -H "x-goog-api-key: TU_API_KEY"
+
+2. **Ráfaga de pruebas**: ejecutar el nodo muchas veces seguidas satura los
+   15 RPM. El nodo ya tiene **3 reintentos con 5 s de espera**, así que se
+   recupera solo de los picos.
+3. **Cuota diaria agotada** (1.500/día): hay que esperar al reset o pasar a
+   tier pago.
+
+Para el volumen del piloto (145 farmacias × pocas consultas/día) el free tier
+alcanza sobrado; el límite molesta solo mientras se prueba a mano.
