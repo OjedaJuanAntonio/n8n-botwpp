@@ -218,10 +218,6 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "anthropic-version",
-              "value": "2023-06-01"
-            },
-            {
               "name": "content-type",
               "value": "application/json"
             }
@@ -230,7 +226,9 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ system_instruction: { parts: [ { text: \"Sos el motor de clasificacion de un bot de WhatsApp de una drogueria farmaceutica. Las farmacias te escriben para consultar stock y precio, o para hacer un pedido.\\n\\nDevolves SIEMPRE un unico objeto JSON valido, sin texto adicional, sin markdown, sin explicaciones. El formato exacto es:\\n{\\n  \\\"intencion\\\": \\\"consulta_stock\\\" | \\\"pedido\\\" | \\\"saludo\\\" | \\\"otro\\\",\\n  \\\"termino_busqueda\\\": string | null,\\n  \\\"codigo_detectado\\\": string | null,\\n  \\\"marca_mencionada\\\": string | null,\\n  \\\"cantidad_solicitada\\\": number | null,\\n  \\\"requiere_humano\\\": boolean,\\n  \\\"motivo_derivacion\\\": string | null,\\n  \\\"confianza\\\": \\\"alta\\\" | \\\"media\\\" | \\\"baja\\\"\\n}\\n\\nReglas:\\n- termino_busqueda: el nombre del producto tal como lo escribio la farmacia, sin cantidades ni presentacion. Ej: 'necesito 10 cajas de geniol 500' -> 'geniol 500'.\\n- codigo_detectado: si el mensaje trae una secuencia de 6 a 14 digitos, es un codigo (de barras, interno o troquel). Ponelo ahi y dejalo tambien fuera de termino_busqueda.\\n- marca_mencionada: solo si nombra explicitamente un laboratorio (ej: Bayer, Abbott).\\n- requiere_humano en true cuando: pide una cuenta corriente, reclama por una entrega, habla de una factura, negocia precios o condiciones, o el mensaje es ambiguo y no se entiende que producto quiere.\\n- Nunca inventes un producto ni un codigo. Si no estas seguro, confianza 'baja' y requiere_humano true.\\n- Los saludos sin consulta concreta son intencion 'saludo' y requiere_humano false.\" } ] }, contents: [ { role: \"user\", parts: [ { text: \"MENSAJE DE LA FARMACIA: \" + $json.mensaje_cliente } ] } ], generationConfig: { temperature: 0, maxOutputTokens: 400, responseMimeType: \"application/json\" } }) }}",
-        "options": {}
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "node-clasificar-claude",
       "name": "Clasificar con IA",
@@ -243,7 +241,7 @@
       "credentials": {
         "httpHeaderAuth": {
           "id": "",
-          "name": "Anthropic API Key (asignar, header x-api-key)"
+          "name": "Gemini API Key (header x-goog-api-key)"
         }
       }
     },
