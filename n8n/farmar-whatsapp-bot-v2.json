@@ -213,7 +213,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.anthropic.com/v1/messages",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -229,11 +229,11 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: \"claude-sonnet-5\", max_tokens: 400, temperature: 0, system: \"Sos el motor de clasificacion de un bot de WhatsApp de una drogueria farmaceutica. Las farmacias te escriben para consultar stock y precio, o para hacer un pedido.\\n\\nDevolves SIEMPRE un unico objeto JSON valido, sin texto adicional, sin markdown, sin explicaciones. El formato exacto es:\\n{\\n  \\\"intencion\\\": \\\"consulta_stock\\\" | \\\"pedido\\\" | \\\"saludo\\\" | \\\"otro\\\",\\n  \\\"termino_busqueda\\\": string | null,\\n  \\\"codigo_detectado\\\": string | null,\\n  \\\"marca_mencionada\\\": string | null,\\n  \\\"cantidad_solicitada\\\": number | null,\\n  \\\"requiere_humano\\\": boolean,\\n  \\\"motivo_derivacion\\\": string | null,\\n  \\\"confianza\\\": \\\"alta\\\" | \\\"media\\\" | \\\"baja\\\"\\n}\\n\\nReglas:\\n- termino_busqueda: el nombre del producto tal como lo escribio la farmacia, sin cantidades ni presentacion. Ej: 'necesito 10 cajas de geniol 500' -> 'geniol 500'.\\n- codigo_detectado: si el mensaje trae una secuencia de 6 a 14 digitos, es un codigo (de barras, interno o troquel). Ponelo ahi y dejalo tambien fuera de termino_busqueda.\\n- marca_mencionada: solo si nombra explicitamente un laboratorio (ej: Bayer, Abbott).\\n- requiere_humano en true cuando: pide una cuenta corriente, reclama por una entrega, habla de una factura, negocia precios o condiciones, o el mensaje es ambiguo y no se entiende que producto quiere.\\n- Nunca inventes un producto ni un codigo. Si no estas seguro, confianza 'baja' y requiere_humano true.\\n- Los saludos sin consulta concreta son intencion 'saludo' y requiere_humano false.\", messages: [ { role: \"user\", content: \"MENSAJE DE LA FARMACIA: \" + $json.mensaje_cliente } ] }) }}",
+        "jsonBody": "={{ JSON.stringify({ system_instruction: { parts: [ { text: \"Sos el motor de clasificacion de un bot de WhatsApp de una drogueria farmaceutica. Las farmacias te escriben para consultar stock y precio, o para hacer un pedido.\\n\\nDevolves SIEMPRE un unico objeto JSON valido, sin texto adicional, sin markdown, sin explicaciones. El formato exacto es:\\n{\\n  \\\"intencion\\\": \\\"consulta_stock\\\" | \\\"pedido\\\" | \\\"saludo\\\" | \\\"otro\\\",\\n  \\\"termino_busqueda\\\": string | null,\\n  \\\"codigo_detectado\\\": string | null,\\n  \\\"marca_mencionada\\\": string | null,\\n  \\\"cantidad_solicitada\\\": number | null,\\n  \\\"requiere_humano\\\": boolean,\\n  \\\"motivo_derivacion\\\": string | null,\\n  \\\"confianza\\\": \\\"alta\\\" | \\\"media\\\" | \\\"baja\\\"\\n}\\n\\nReglas:\\n- termino_busqueda: el nombre del producto tal como lo escribio la farmacia, sin cantidades ni presentacion. Ej: 'necesito 10 cajas de geniol 500' -> 'geniol 500'.\\n- codigo_detectado: si el mensaje trae una secuencia de 6 a 14 digitos, es un codigo (de barras, interno o troquel). Ponelo ahi y dejalo tambien fuera de termino_busqueda.\\n- marca_mencionada: solo si nombra explicitamente un laboratorio (ej: Bayer, Abbott).\\n- requiere_humano en true cuando: pide una cuenta corriente, reclama por una entrega, habla de una factura, negocia precios o condiciones, o el mensaje es ambiguo y no se entiende que producto quiere.\\n- Nunca inventes un producto ni un codigo. Si no estas seguro, confianza 'baja' y requiere_humano true.\\n- Los saludos sin consulta concreta son intencion 'saludo' y requiere_humano false.\" } ] }, contents: [ { role: \"user\", parts: [ { text: \"MENSAJE DE LA FARMACIA: \" + $json.mensaje_cliente } ] } ], generationConfig: { temperature: 0, maxOutputTokens: 400, responseMimeType: \"application/json\" } }) }}",
         "options": {}
       },
       "id": "node-clasificar-claude",
-      "name": "Clasificar con Claude",
+      "name": "Clasificar con IA",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -249,10 +249,10 @@
     },
     {
       "parameters": {
-        "jsCode": "let resultado;\ntry {\n  const texto = $input.first().json.content[0].text;\n  resultado = JSON.parse(texto);\n} catch (e) {\n  resultado = {\n    intencion: 'otro',\n    termino_busqueda: null,\n    marca_proveedor: null,\n    codigo_detectado: null,\n    cantidad_solicitada: null,\n    requiere_humano: true,\n    motivo_derivacion: 'Error de clasificación (JSON inválido)',\n    confianza: 'baja'\n  };\n}\n\nreturn [{\n  json: {\n    ...resultado,\n    numero_from: $('Preparar Prompt Claude').item.json.numero_from,\n    mensaje_original: $('Preparar Prompt Claude').item.json.mensaje_cliente\n  }\n}];"
+        "jsCode": "let resultado;\ntry {\n  // Gemini devuelve el texto en candidates[0].content.parts[0].text\n  const r = $input.first().json;\n  const texto = r.candidates?.[0]?.content?.parts?.[0]?.text\n             ?? r.content?.[0]?.text;   // compatibilidad si se vuelve a Anthropic\n  resultado = JSON.parse(texto);\n} catch (e) {\n  resultado = {\n    intencion: 'otro',\n    termino_busqueda: null,\n    codigo_detectado: null,\n    marca_mencionada: null,\n    cantidad_solicitada: null,\n    requiere_humano: true,\n    motivo_derivacion: 'Error de clasificacion (respuesta no parseable)',\n    confianza: 'baja'\n  };\n}\n\nreturn [{\n  json: {\n    ...resultado,\n    numero_from: $('Preparar Prompt Claude').item.json.numero_from,\n    mensaje_original: $('Preparar Prompt Claude').item.json.mensaje_cliente\n  }\n}];"
       },
       "id": "node-parsear-json",
-      "name": "Parsear JSON Claude",
+      "name": "Parsear JSON IA",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -333,7 +333,7 @@
         "operation": "send",
         "phoneNumberId": "CAMBIAR_PHONE_NUMBER_ID",
         "textBody": "={{ $json.respuesta }}",
-        "recipientPhoneNumber": "={{ $('Parsear JSON Claude').item.json.numero_from }}"
+        "recipientPhoneNumber": "={{ $('Parsear JSON IA').item.json.numero_from }}"
       },
       "id": "node-enviar-respuesta-farmacia",
       "name": "Enviar Respuesta Farmacia",
@@ -375,7 +375,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const filas = $input.all();\nconst datosClasificacion = $('Parsear JSON Claude').first().json;\n\n// Fallback: si no hay comprador asignado por marca, usar admin general\nconst comprador = filas.length > 0\n  ? filas[0].json\n  : { nombre: 'Administración General', numero_whatsapp: 'CAMBIAR_NUMERO_ADMIN_FALLBACK' };\n\nreturn [{\n  json: {\n    comprador_nombre: comprador.nombre,\n    comprador_numero: comprador.numero_whatsapp,\n    farmacia_numero: datosClasificacion.numero_from,\n    mensaje_original: datosClasificacion.mensaje_original,\n    motivo: datosClasificacion.motivo_derivacion || 'Consulta general'\n  }\n}];"
+        "jsCode": "const filas = $input.all();\nconst datosClasificacion = $('Parsear JSON IA').first().json;\n\n// Fallback: si no hay comprador asignado por marca, usar admin general\nconst comprador = filas.length > 0\n  ? filas[0].json\n  : { nombre: 'Administración General', numero_whatsapp: 'CAMBIAR_NUMERO_ADMIN_FALLBACK' };\n\nreturn [{\n  json: {\n    comprador_nombre: comprador.nombre,\n    comprador_numero: comprador.numero_whatsapp,\n    farmacia_numero: datosClasificacion.numero_from,\n    mensaje_original: datosClasificacion.mensaje_original,\n    motivo: datosClasificacion.motivo_derivacion || 'Consulta general'\n  }\n}];"
       },
       "id": "node-preparar-alerta",
       "name": "Preparar Alerta Comprador",
@@ -518,25 +518,25 @@
       "main": [
         [
           {
-            "node": "Clasificar con Claude",
+            "node": "Clasificar con IA",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Clasificar con Claude": {
+    "Clasificar con IA": {
       "main": [
         [
           {
-            "node": "Parsear JSON Claude",
+            "node": "Parsear JSON IA",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Parsear JSON Claude": {
+    "Parsear JSON IA": {
       "main": [
         [
           {

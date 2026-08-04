@@ -14,7 +14,7 @@ En n8n: **Workflows → ⋯ → Import from File** y elegir el JSON.
 | Nodo | Credencial | Datos |
 |---|---|---|
 | Los 4 nodos Postgres | **Postgres** | Host `postgres` (⚠ no `localhost`: n8n corre en Docker), base `farmar_bot`, usuario y password del `.env`, puerto 5432, SSL disable |
-| `Clasificar con Claude` | **Header Auth** | Name: `x-api-key` · Value: tu API key de Anthropic. Agregar también el header `anthropic-version: 2023-06-01` |
+| `Clasificar con IA` | **Header Auth** | Name: `x-goog-api-key` · Value: tu API key de Google AI Studio |
 | Los 4 nodos WhatsApp | **WhatsApp Business Cloud** | Access Token y Phone Number ID de la app de Meta |
 
 ## Qué se corrigió respecto de la versión original
@@ -82,3 +82,44 @@ de WhatsApp y ese campo no existe. Ahora referencia el nodo explícitamente.
 
 Falta completar `phoneNumberId` (hoy `CAMBIAR_PHONE_NUMBER_ID`) con el Phone
 Number ID de la app de Meta.
+
+
+## Motor de IA: Google Gemini (gratis para pruebas)
+
+El nodo `Clasificar con IA` (antes *Clasificar con Claude*) apunta a la API de
+Gemini, que tiene un tier gratuito suficiente para el piloto (~1.500 requests
+por día, sin tarjeta).
+
+### Conseguir la API key
+
+1. Entrar a **https://aistudio.google.com/apikey** con una cuenta de Google.
+2. **Create API key** → copiarla.
+
+### Cargarla en n8n
+
+Crear una credencial **Header Auth** (no la de Google predefinida):
+
+| Campo | Valor |
+|---|---|
+| Name | `x-goog-api-key` |
+| Value | la API key |
+
+Y asignarla al nodo `Clasificar con IA`. Poner la key como header, no como
+`?key=` en la URL: así no queda escrita en los logs de ejecución.
+
+### Detalles del pedido
+
+- **Modelo**: `gemini-2.0-flash` (en la URL). Para bajar costos en producción se
+  puede cambiar a `gemini-2.0-flash-lite`.
+- **`responseMimeType: "application/json"`** fuerza a que la respuesta sea JSON
+  válido, que es justo lo que necesita el nodo siguiente.
+- El parser (`Parsear JSON IA`) lee `candidates[0].content.parts[0].text`, y
+  mantiene compatibilidad con el formato de Anthropic (`content[0].text`) por si
+  se vuelve a Claude más adelante. Si la respuesta no se puede parsear, marca
+  `requiere_humano: true` en vez de romper el flujo.
+
+### Volver a Claude
+
+Cambiar la URL a `https://api.anthropic.com/v1/messages`, el body al formato
+`{model, max_tokens, system, messages}` y la credencial a `x-api-key` más el
+header `anthropic-version: 2023-06-01`. El parser ya contempla ambos formatos.
