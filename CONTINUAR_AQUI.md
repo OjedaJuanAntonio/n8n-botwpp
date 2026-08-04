@@ -84,8 +84,10 @@ WhatsApp Cloud API (Meta)
 | Datos del piloto | ✅ 1 farmacia + 1 comprador de prueba, 846 marcas cargadas |
 | Índices y consultas del bot | ✅ Probados (whitelist, código, nombre, equivalentes, comprador) |
 | Repo GitHub | ✅ https://github.com/OjedaJuanAntonio/n8n-botwpp |
-| **Workflow n8n** | ⏳ **ES EL PRÓXIMO PASO** (§4): está en `n8n\farmar-whatsapp-bot-v2.json`, falta importarlo |
-| Programación horaria (schtasks) | ⏳ Pendiente (§5.3) |
+| **Workflow n8n** | ✅ **PROBADO DE PUNTA A PUNTA** (2026-08-03): importado, corre desde el webhook simulado hasta la respuesta formateada |
+| Clasificador (IA) | ✅ Google Gemini `gemini-3.5-flash-lite`, free tier, credencial Header Auth |
+| Nodos WhatsApp | ⏳ **ES EL PRÓXIMO PASO** (§4): falta la app de Meta. Mantenerlos desactivados hasta entonces |
+| Programación horaria (schtasks) | ⏳ Pendiente (§5.5) |
 | ngrok / WEBHOOK_URL | ⏳ Pendiente (README §3) |
 | App Meta / WhatsApp Cloud API | ⏳ Pendiente, pasos manuales (README §4) |
 
@@ -94,30 +96,55 @@ WhatsApp Cloud API (Meta)
 stock, 846 marcas en MAYÚSCULAS. Duración del sync: ~9 min (5,7 lectura Oracle
 fila-por-fila + 3,5 INSERT).
 
+**Prueba end-to-end del bot (2026-08-03).** Con datos pineados en el Webhook, el
+mensaje *"hola, necesito 10 cajas de geniol 500"* recorrió todo el flujo:
+
+1. `Extraer Datos Mensaje` → `from=543795357760`, texto del mensaje.
+2. `Validar Whitelist` → autorizada.
+3. `Clasificar con IA` (Gemini) → `intencion=pedido`, `termino_busqueda="geniol 500"`,
+   `cantidad_solicitada=10`, `requiere_humano=false`.
+4. `Buscar Stock` → 5 productos, disponibles primero.
+5. `Formatear Respuesta Stock` → mensaje único listo para enviar:
+
+```
+Disponible:
+- GENIOL 500 MG COMP. X16 | 19411 u. | $5.233,72
+- GENIOL 1 GR COMP. X8 | 49381 u. | $3.093,43
+...
+```
+
+Nota: en el panel de n8n el campo `respuesta` se ve con `\n` escapados; el
+contenido real tiene saltos de línea y así llega a WhatsApp.
+
 ---
 
-## 4. ⚡ PRÓXIMO PASO INMEDIATO: poner a andar el workflow
+## 4. ⚡ PRÓXIMO PASO INMEDIATO: conectar WhatsApp
 
-Todo lo de datos está resuelto. Falta el bot en sí. **No hace falta WhatsApp ni
-ngrok para esta parte**: el flujo se prueba entero dentro de n8n.
+La lógica del bot ya está probada y funcionando. Lo único que falta para que
+sea un bot de verdad es la parte de Meta, que es **100% manual** (README §4):
 
-1. **Importar el flujo**: en http://localhost:5678 → Workflows → ⋯ →
-   *Import from File* → `n8n\farmar-whatsapp-bot-v2.json` (20 nodos).
-2. **Crear las 3 credenciales** (detalle en `n8n\LEEME.md`):
-   - **Postgres** → host `postgres` (⚠ NO `localhost`: n8n corre en Docker),
-     base `farmar_bot`, usuario y password del `.env`.
-   - **Header Auth** para Claude → `x-api-key` con la API key de Anthropic,
-     más el header `anthropic-version: 2023-06-01`.
-   - **WhatsApp Business Cloud** → recién cuando exista la app de Meta.
-3. **Reemplazar** `CAMBIAR_NUMERO_ADMIN_FALLBACK` en el nodo
-   *Preparar Alerta Comprador* por un número real.
-4. **Probar nodo por nodo** con *Execute Node*, usando los valores de la tabla
-   "Datos para probar" de `CONSULTAS_PARA_N8N.md` (código `7798032935096`,
-   troquel `4407513`, nombre `geniol`, agotado `2000000032603`).
+1. **Crear la app** en https://developers.facebook.com → tipo Business →
+   agregar el producto **WhatsApp**.
+2. **Usar el número de prueba gratuito** que genera Meta. ⚠ **Nunca registrar
+   un número personal o corporativo en uso**: al registrarlo en la Cloud API
+   ese número deja de poder usarse en la app de WhatsApp.
+3. **Verificar los destinatarios**: el número de prueba permite escribirle a
+   hasta 5 números verificados. Agregar ahí el número del piloto.
+4. **Anotar** el *Phone Number ID* y el *Access Token* (el temporal dura 24 h).
+5. **En n8n**: crear la credencial **WhatsApp Business Cloud**, reemplazar
+   `CAMBIAR_PHONE_NUMBER_ID` en los 4 nodos y **reactivarlos**.
+6. **Levantar ngrok** (`ngrok http 5678`), poner la URL en `WEBHOOK_URL` del
+   `.env` y `docker compose up -d n8n`.
+7. **Configurar el webhook** en Meta con esa URL + el path `whatsapp`, un
+   Verify Token inventado (el mismo en el nodo Webhook de n8n), y suscribirse
+   al campo `messages`.
 
-Cuando el flujo responda bien, recién ahí: app de Meta con su **número de prueba
-gratuito** (⚠ nunca registrar un número personal en la API: se pierde el
-WhatsApp de ese número), ngrok, y `WEBHOOK_URL` en el `.env`.
+Queda pendiente además reemplazar `CAMBIAR_NUMERO_ADMIN_FALLBACK` en el nodo
+*Preparar Alerta Comprador* por un número real de administración.
+
+> Mientras tanto, para seguir probando la lógica sin Meta: dejar los 4 nodos
+> WhatsApp **desactivados** (seleccionarlos y apretar `D`) y usar datos
+> pineados en el Webhook (`n8n\datos_prueba_webhook.json`).
 
 ---
 

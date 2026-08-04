@@ -145,3 +145,62 @@ por día. Un 429 puede venir de tres lados:
 
 Para el volumen del piloto (145 farmacias × pocas consultas/día) el free tier
 alcanza sobrado; el límite molesta solo mientras se prueba a mano.
+
+
+## Prueba end-to-end (2026-08-03) — el flujo funciona
+
+Con los 4 nodos de WhatsApp desactivados y datos pineados en el Webhook
+(`datos_prueba_webhook.json`), el mensaje *"hola, necesito 10 cajas de geniol
+500"* recorrió el flujo completo:
+
+| Nodo | Resultado |
+|---|---|
+| `Extraer Datos Mensaje` | `from=543795357760`, texto del mensaje |
+| `Validar Whitelist` | autorizada — *Farmacia de Prueba* |
+| `Clasificar con IA` | `intencion=pedido`, `termino_busqueda="geniol 500"`, `cantidad_solicitada=10`, `requiere_humano=false` |
+| `Buscar Stock` | 5 productos, disponibles primero |
+| `Formatear Respuesta Stock` | un único mensaje consolidado |
+
+Respuesta generada:
+
+```
+Disponible:
+- GENIOL 500 MG COMP. X16 | 19411 u. | $5.233,72
+- GENIOL 500 MG COMP. X64 EXPEND. | 4 u. | $19.717,48
+- GENIOL COMP.EXPEND 50 BL 500 MG -8457 | 43 u. | $123.234,25
+- GENIOL 1 GR COMP. X8 | 49381 u. | $3.093,43
+- GENIOL 1G COMP. X56 | 133 u. | $20.088,85
+```
+
+> En el panel de n8n ese campo se ve con `\n` escapados: es solo cómo n8n
+> muestra el string. El contenido real tiene saltos de línea y así llega a
+> WhatsApp.
+
+### El clasificador, probado aparte
+
+Cuatro mensajes contra la API de Gemini:
+
+| Mensaje | Clasificación |
+|---|---|
+| "necesito 10 cajas de geniol 500" | `pedido` · término `geniol 500` · cantidad 10 |
+| "tenes el 7798032935096?" | `consulta_stock` · código detectado |
+| "buen dia!" | `saludo` |
+| "hay un error en mi factura" | `otro` · **requiere_humano** · motivo: reclamo de factura |
+
+## Defectos encontrados y corregidos
+
+| Nodo | Defecto | Origen |
+|---|---|---|
+| `Formatear Respuesta Stock` | Saltos de línea reales donde iban escapes, dejando strings sin cerrar → *"Invalid or unexpected token"* | Introducido al generar el JSON |
+| `Enviar Alerta Comprador` | `\n` y comillas escapadas se enviaban literales: los campos de texto de n8n no interpretan escapes | Workflow original |
+| Los 4 nodos WhatsApp | Usaban `recipientPhone`; n8n 2.28.7 espera `recipientPhoneNumber` | Workflow original |
+| `Avisar Derivación a Farmacia` | Leía `$json.farmacia_numero`, pero va después de un nodo WhatsApp y ese `$json` es la respuesta de la API | Workflow original |
+| `Clasificar con IA` | Faltaban `authentication` y `genericAuthType`, sin los cuales n8n no muestra el selector de credencial | Introducido al cambiar a Gemini |
+
+Los cinco nodos Code se validaron con `node --check`.
+
+## Estado: qué falta
+
+Solo la parte de Meta. Ver §4 de `../CONTINUAR_AQUI.md`: crear la app, usar el
+número de prueba gratuito, cargar la credencial de WhatsApp, reactivar los 4
+nodos y levantar ngrok.
