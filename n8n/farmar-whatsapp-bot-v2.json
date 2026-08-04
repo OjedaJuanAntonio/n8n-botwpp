@@ -199,26 +199,6 @@
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT DISTINCT nombre_marca FROM proveedores WHERE activo = true"
-      },
-      "id": "node-marcas-activas",
-      "name": "Traer Marcas Activas",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [
-        1320,
-        220
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "",
-          "name": "Postgres Farmar (asignar)"
-        }
-      }
-    },
-    {
-      "parameters": {
         "jsCode": "// El listado de marcas ya no se inyecta en el prompt: son 846 y multiplicaba\n// el costo de tokens en cada mensaje. La marca se resuelve por SQL despues.\nconst datos = $('Extraer Datos Mensaje').item.json;\nreturn [{ json: { mensaje_cliente: datos.texto, numero_from: datos.from } }];"
       },
       "id": "node-preparar-prompt",

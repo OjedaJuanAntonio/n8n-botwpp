@@ -1,6 +1,6 @@
 # Workflow de n8n
 
-`farmar-whatsapp-bot-v2.json` — flujo del bot listo para importar.
+`farmar-whatsapp-bot-v2.json` — flujo del bot listo para importar (19 nodos).
 
 Parte del workflow original (armado el 2026-07-06, que quedó en `Downloads` y
 **nunca llegó a importarse**) y lo actualiza al esquema actual de la base.
@@ -24,7 +24,7 @@ En n8n: **Workflows → ⋯ → Import from File** y elegir el JSON.
 | `Buscar Stock` | Usaba la columna `codigo`, que ya no existe | ✅ Ahora busca por `codigo_barra`, `codigo_farmacia` y `troquel`, o por nombre con similitud trigram |
 | `Buscar Comprador Asignado` | Hacía join por `compradores.marca_proveedor_asignada`, columna eliminada | ✅ Join por `proveedores.comprador_id → compradores.id` |
 | `Clasificar con Claude` | El system prompt era un placeholder literal | ✅ Prompt completo, con el formato JSON de salida y las reglas de derivación |
-| `Traer Marcas Activas` | Inyectaba las 846 marcas en el prompt de **cada** mensaje | ✅ Sacado del camino (queda en el lienzo, desconectado). La marca se resuelve por SQL |
+| `Traer Marcas Activas` | Inyectaba las 846 marcas en el prompt de **cada** mensaje | ✅ Eliminado. La marca se resuelve por SQL |
 | `Formatear Respuesta Stock` | Mostraba `$null` cuando el producto no tiene precio | ✅ Muestra "precio a confirmar"; separa disponibles de agotados |
 
 Sobre las marcas: eran ~10 KB de texto extra por mensaje. A 43.500 mensajes/mes
