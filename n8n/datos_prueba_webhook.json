@@ -1,0 +1,39 @@
+[
+  {
+    "body": {
+      "object": "whatsapp_business_account",
+      "entry": [
+        {
+          "id": "WABA_ID_DE_PRUEBA",
+          "changes": [
+            {
+              "field": "messages",
+              "value": {
+                "messaging_product": "whatsapp",
+                "metadata": {
+                  "display_phone_number": "15550000000",
+                  "phone_number_id": "PHONE_NUMBER_ID_DE_PRUEBA"
+                },
+                "contacts": [
+                  {
+                    "profile": { "name": "Farmacia de Prueba" },
+                    "wa_id": "543795357760"
+                  }
+                ],
+                "messages": [
+                  {
+                    "from": "543795357760",
+                    "id": "wamid.PRUEBA0001",
+                    "timestamp": "1754250000",
+                    "type": "text",
+                    "text": { "body": "hola, tenes geniol 500?" }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+]
