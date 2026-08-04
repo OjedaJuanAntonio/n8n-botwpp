@@ -60,6 +60,35 @@ services:
       postgres:
         condition: service_healthy
 
+  # ---------------------------------------------------------------------------
+  # Tunel HTTPS hacia n8n, necesario porque WhatsApp Cloud API exige un webhook
+  # publico con certificado valido y no acepta localhost.
+  #
+  # Se corre como contenedor en vez de instalarlo en Windows: no requiere
+  # permisos de administrador y se levanta junto con el resto.
+  #
+  # Requiere NGROK_AUTHTOKEN en el .env (cuenta gratis en ngrok.com).
+  # Es un perfil aparte: solo arranca si se lo pide explicitamente, para no
+  # exponer n8n a internet en cada "docker compose up".
+  #
+  #   Levantar:  docker compose --profile tunel up -d
+  #   Ver la URL publica:  http://localhost:4040
+  #   Apagar:    docker compose --profile tunel down
+  # ---------------------------------------------------------------------------
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: farmar_ngrok
+    restart: unless-stopped
+    profiles: ["tunel"]
+    command: http n8n:5678
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    ports:
+      # Panel local de ngrok: muestra la URL publica y el trafico entrante.
+      - "4040:4040"
+    depends_on:
+      - n8n
+
 volumes:
   postgres_data:
   n8n_data:

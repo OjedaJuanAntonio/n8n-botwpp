@@ -5,28 +5,39 @@ que falta: la lógica del bot ya está probada.
 
 ---
 
-## Antes de empezar: instalar ngrok
+## Antes de empezar: levantar el túnel HTTPS
 
 Meta exige un webhook **HTTPS público**; no acepta `localhost`.
 
-1. Crear cuenta gratis en https://ngrok.com y copiar el authtoken del dashboard.
-2. Instalar en Windows (elegir una):
-   - Chocolatey: `choco install ngrok`
-   - O bajar el .zip de https://ngrok.com/download y poner el .exe en el PATH.
-3. Configurar el token una sola vez:
+ngrok viene incluido en el `docker-compose.yml` como servicio, así que **no hace
+falta instalarlo en Windows** (instalarlo con Chocolatey requiere permisos de
+administrador y suele fallar con *"acceso denegado a C:\ProgramData\chocolatey\lib-bad"*).
 
-       ngrok config add-authtoken TU_AUTHTOKEN
+1. Crear cuenta gratis en https://ngrok.com
+2. Copiar el authtoken de https://dashboard.ngrok.com/get-started/your-authtoken
+3. Pegarlo en el `.env`:
 
-4. Con los contenedores levantados, en una terminal aparte:
+       NGROK_AUTHTOKEN=tu_token_aca
 
-       ngrok http 5678
+4. Levantar el túnel (es un perfil aparte: no arranca con un `up` normal, para
+   no exponer n8n sin querer):
 
-   Deja esa terminal abierta. Te da una URL tipo
-   `https://abcd-1234.ngrok-free.app`.
+       docker compose --profile tunel up -d
 
-> ⚠ En el plan gratuito la URL **cambia cada vez que reiniciás ngrok**, y hay
-> que actualizarla en Meta y en el `.env`. Si esto va a quedar corriendo,
+5. Ver la URL pública en **http://localhost:4040** (panel de ngrok). Es algo
+   como `https://abcd-1234.ngrok-free.app`. Ese panel además muestra en vivo
+   todos los pedidos que entran, lo cual es muy útil para depurar el webhook.
+
+Para apagar el túnel cuando no lo uses:
+
+       docker compose stop ngrok
+
+> ⚠ En el plan gratuito la URL **cambia cada vez que se reinicia el contenedor**,
+> y hay que actualizarla en Meta y en el `.env`. Si esto va a quedar corriendo,
 > conviene Cloudflare Tunnel (URL fija) — ver README §3.
+
+> El contenedor apunta a `n8n:5678` por la red interna de Docker, no a
+> `localhost`, porque ambos corren dentro de Docker.
 
 ---
 
