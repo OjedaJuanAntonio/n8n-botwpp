@@ -202,7 +202,7 @@
         "jsCode": "// El listado de marcas ya no se inyecta en el prompt: son 846 y multiplicaba\n// el costo de tokens en cada mensaje. La marca se resuelve por SQL despues.\nconst datos = $('Extraer Datos Mensaje').item.json;\nreturn [{ json: { mensaje_cliente: datos.texto, numero_from: datos.from } }];"
       },
       "id": "node-preparar-prompt",
-      "name": "Preparar Prompt Claude",
+      "name": "Preparar Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -250,7 +250,7 @@
     },
     {
       "parameters": {
-        "jsCode": "let resultado;\ntry {\n  // Gemini devuelve el texto en candidates[0].content.parts[0].text\n  const r = $input.first().json;\n  const texto = r.candidates?.[0]?.content?.parts?.[0]?.text\n             ?? r.content?.[0]?.text;   // compatibilidad si se vuelve a Anthropic\n  resultado = JSON.parse(texto);\n} catch (e) {\n  resultado = {\n    intencion: 'otro',\n    termino_busqueda: null,\n    codigo_detectado: null,\n    marca_mencionada: null,\n    cantidad_solicitada: null,\n    requiere_humano: true,\n    motivo_derivacion: 'Error de clasificacion (respuesta no parseable)',\n    confianza: 'baja'\n  };\n}\n\nreturn [{\n  json: {\n    ...resultado,\n    numero_from: $('Preparar Prompt Claude').item.json.numero_from,\n    mensaje_original: $('Preparar Prompt Claude').item.json.mensaje_cliente\n  }\n}];"
+        "jsCode": "let resultado;\ntry {\n  // Gemini devuelve el texto en candidates[0].content.parts[0].text\n  const r = $input.first().json;\n  const texto = r.candidates?.[0]?.content?.parts?.[0]?.text\n             ?? r.content?.[0]?.text;   // compatibilidad si se vuelve a Anthropic\n  resultado = JSON.parse(texto);\n} catch (e) {\n  resultado = {\n    intencion: 'otro',\n    termino_busqueda: null,\n    codigo_detectado: null,\n    marca_mencionada: null,\n    cantidad_solicitada: null,\n    requiere_humano: true,\n    motivo_derivacion: 'Error de clasificacion (respuesta no parseable)',\n    confianza: 'baja'\n  };\n}\n\nreturn [{\n  json: {\n    ...resultado,\n    numero_from: $('Preparar Prompt').item.json.numero_from,\n    mensaje_original: $('Preparar Prompt').item.json.mensaje_cliente\n  }\n}];"
       },
       "id": "node-parsear-json",
       "name": "Parsear JSON IA",
@@ -317,7 +317,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const filas = $input.all().map(i => i.json);\n\nif (filas.length === 0) {\n  return [{ json: {\n    respuesta: 'No encontre ese producto en el catalogo. Te derivo con un asesor para confirmarlo.',\n    sin_resultados: true\n  } }];\n}\n\nconst money = v => (v === null || v === undefined)\n  ? 'precio a confirmar'\n  : '$' + Number(v).toLocaleString('es-AR', { minimumFractionDigits: 2 });\n\nconst disponibles = filas.filter(p => p.estado === 'DISPONIBLE');\nconst agotados    = filas.filter(p => p.estado === 'SIN_STOCK');\n\nlet partes = [];\nif (disponibles.length) {\n  partes.push('Disponible:\n' + disponibles\n    .map(p => `• ${p.nombre} — ${p.stock} u. — ${money(p.precio)}`).join('\n'));\n}\nif (agotados.length) {\n  partes.push('Sin stock por el momento:\n' + agotados\n    .map(p => `• ${p.nombre}`).join('\n'));\n}\n\n// Una sola respuesta consolidada: cada mensaje saliente se factura aparte.\nreturn [{ json: {\n  respuesta: partes.join('\n\n'),\n  sin_resultados: false,\n  hay_disponibles: disponibles.length > 0\n} }];"
+        "jsCode": "const filas = $input.all().map(i => i.json);\n\nif (filas.length === 0) {\n  return [{ json: {\n    respuesta: 'No encontre ese producto en el catalogo. Te derivo con un asesor para confirmarlo.',\n    sin_resultados: true\n  } }];\n}\n\n// Si el producto no tiene precio cargado, no mostrar '$null'\nconst money = v => (v === null || v === undefined)\n  ? 'precio a confirmar'\n  : '$' + Number(v).toLocaleString('es-AR', { minimumFractionDigits: 2 });\n\nconst disponibles = filas.filter(p => p.estado === 'DISPONIBLE');\nconst agotados    = filas.filter(p => p.estado === 'SIN_STOCK');\n\nconst partes = [];\nif (disponibles.length) {\n  const items = disponibles\n    .map(p => `- ${p.nombre} | ${p.stock} u. | ${money(p.precio)}`)\n    .join('\\n');\n  partes.push('Disponible:\\n' + items);\n}\nif (agotados.length) {\n  const items = agotados\n    .map(p => `- ${p.nombre}`)\n    .join('\\n');\n  partes.push('Sin stock por el momento:\\n' + items);\n}\n\n// Una sola respuesta consolidada: cada mensaje saliente se factura aparte.\nreturn [{ json: {\n  respuesta: partes.join('\\n\\n'),\n  sin_resultados: false,\n  hay_disponibles: disponibles.length > 0\n} }];"
       },
       "id": "node-formatear-stock",
       "name": "Formatear Respuesta Stock",
@@ -392,7 +392,7 @@
         "resource": "message",
         "operation": "send",
         "phoneNumberId": "CAMBIAR_PHONE_NUMBER_ID",
-        "textBody": "=Nueva consulta derivada.\\nFarmacia: {{ $json.farmacia_numero }}\\nMotivo: {{ $json.motivo }}\\nMensaje original: \\\"{{ $json.mensaje_original }}\\\"\\n\\nContactar directo: https://wa.me/{{ $json.farmacia_numero }}",
+        "textBody": "=Nueva consulta derivada.\nFarmacia: {{ $json.farmacia_numero }}\nMotivo: {{ $json.motivo }}\nMensaje original: \"{{ $json.mensaje_original }}\"\n\nContactar directo: https://wa.me/{{ $json.farmacia_numero }}",
         "recipientPhoneNumber": "={{ $json.comprador_numero }}"
       },
       "id": "node-enviar-alerta-comprador",
@@ -501,7 +501,7 @@
       "main": [
         [
           {
-            "node": "Preparar Prompt Claude",
+            "node": "Preparar Prompt",
             "type": "main",
             "index": 0
           }
@@ -515,7 +515,7 @@
         ]
       ]
     },
-    "Preparar Prompt Claude": {
+    "Preparar Prompt": {
       "main": [
         [
           {
