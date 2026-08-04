@@ -59,3 +59,26 @@ activo. La consulta está probada y documentada en
 agregar un nodo Postgres más después de `Buscar Stock`, condicionado a que no
 haya disponibles. Solo aplica a medicamentos (~22% del catálogo tiene
 `monodroga` cargada).
+
+## Nodos WhatsApp: parámetro renombrado
+
+El workflow original traía el destinatario bajo `recipientPhone`, nombre que
+usaba una versión anterior del nodo. n8n 2.28.7 espera **`recipientPhoneNumber`**,
+y por eso los 4 nodos daban *"Parameter Recipient's Phone Number is required"* y
+el flujo no arrancaba. Ya está corregido en el JSON.
+
+Destinatario de cada uno:
+
+| Nodo | Le escribe a | Expresión |
+|---|---|---|
+| `Enviar Rechazo` | la farmacia no autorizada | `$('Extraer Datos Mensaje').item.json.from` |
+| `Enviar Respuesta Farmacia` | la farmacia | `$('Parsear JSON Claude').item.json.numero_from` |
+| `Enviar Alerta Comprador` | el comprador | `$json.comprador_numero` |
+| `Avisar Derivación a Farmacia` | la farmacia | `$('Preparar Alerta Comprador').item.json.farmacia_numero` |
+
+El último tenía además un error propio: usaba `$json.farmacia_numero`, pero como
+va *después* de `Enviar Alerta Comprador`, su `$json` es la respuesta de la API
+de WhatsApp y ese campo no existe. Ahora referencia el nodo explícitamente.
+
+Falta completar `phoneNumberId` (hoy `CAMBIAR_PHONE_NUMBER_ID`) con el Phone
+Number ID de la app de Meta.

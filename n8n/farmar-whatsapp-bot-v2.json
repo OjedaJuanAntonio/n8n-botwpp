@@ -179,8 +179,8 @@
         "resource": "message",
         "operation": "send",
         "phoneNumberId": "CAMBIAR_PHONE_NUMBER_ID",
-        "recipientPhone": "={{ $('Extraer Datos Mensaje').item.json.from }}",
-        "textBody": "Este número no está habilitado para operar con nuestro sistema automático. Por favor comunicate con tu representante comercial habitual."
+        "textBody": "Este número no está habilitado para operar con nuestro sistema automático. Por favor comunicate con tu representante comercial habitual.",
+        "recipientPhoneNumber": "={{ $('Extraer Datos Mensaje').item.json.from }}"
       },
       "id": "node-enviar-rechazo",
       "name": "Enviar Rechazo",
@@ -332,8 +332,8 @@
         "resource": "message",
         "operation": "send",
         "phoneNumberId": "CAMBIAR_PHONE_NUMBER_ID",
-        "recipientPhone": "={{ $('Parsear JSON Claude').item.json.numero_from }}",
-        "textBody": "={{ $json.respuesta }}"
+        "textBody": "={{ $json.respuesta }}",
+        "recipientPhoneNumber": "={{ $('Parsear JSON Claude').item.json.numero_from }}"
       },
       "id": "node-enviar-respuesta-farmacia",
       "name": "Enviar Respuesta Farmacia",
@@ -391,8 +391,8 @@
         "resource": "message",
         "operation": "send",
         "phoneNumberId": "CAMBIAR_PHONE_NUMBER_ID",
-        "recipientPhone": "={{ $json.comprador_numero }}",
-        "textBody": "=Nueva consulta derivada.\\nFarmacia: {{ $json.farmacia_numero }}\\nMotivo: {{ $json.motivo }}\\nMensaje original: \\\"{{ $json.mensaje_original }}\\\"\\n\\nContactar directo: https://wa.me/{{ $json.farmacia_numero }}"
+        "textBody": "=Nueva consulta derivada.\\nFarmacia: {{ $json.farmacia_numero }}\\nMotivo: {{ $json.motivo }}\\nMensaje original: \\\"{{ $json.mensaje_original }}\\\"\\n\\nContactar directo: https://wa.me/{{ $json.farmacia_numero }}",
+        "recipientPhoneNumber": "={{ $json.comprador_numero }}"
       },
       "id": "node-enviar-alerta-comprador",
       "name": "Enviar Alerta Comprador",
@@ -414,8 +414,8 @@
         "resource": "message",
         "operation": "send",
         "phoneNumberId": "CAMBIAR_PHONE_NUMBER_ID",
-        "recipientPhone": "={{ $json.farmacia_numero }}",
-        "textBody": "Tu consulta fue derivada al especialista correspondiente, en breve te va a contactar."
+        "textBody": "Tu consulta fue derivada al especialista correspondiente, en breve te va a contactar.",
+        "recipientPhoneNumber": "={{ $('Preparar Alerta Comprador').item.json.farmacia_numero }}"
       },
       "id": "node-avisar-derivacion",
       "name": "Avisar Derivación a Farmacia",
